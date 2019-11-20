@@ -1,0 +1,132 @@
+/*
+CSS style for the index page
+*/
+
+p, span, a, code, h3, h4 {
+    font-family: monospace;
+    font-size: 15px;
+}
+
+#Header, #BrowserTable, #Docs {
+    margin-left: 2%;
+    word-wrap: break-word;
+}
+
+#BrowserTable {
+    min-height: 260px;
+}
+
+#Header {
+    margin-bottom: 10px;
+}
+#PathHeader {
+    font-weight: bold;
+}
+#Path {
+    margin-left: 20px;
+}
+
+.column {
+    vertical-align: top;
+    padding-left: 5px;
+}
+.object {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 3px 2px 3px 2px;
+
+    border: 1px solid black;
+    border-bottom: none;
+
+    background-color: silver;
+    color: white;
+    text-decoration: none;
+    text-shadow: 0px 0px 10px black;
+    cursor: pointer;
+}
+.object:last-of-type {
+    border-bottom: 1px solid black;
+}
+.object:hover, .exampleUrl:hover, .method:hover {
+    background-color: darkcyan;
+    color: white;
+}
+.value, .error {
+    display: block;
+    width: 100%;
+    padding: 3px 2px 3px 2px;
+
+    border: 1px solid black;
+
+    background-color: darkcyan;
+    color: white;
+    text-shadow: 0px 0px 10px black;
+}
+.error {
+    background-color: orange;
+    text-align: center;
+}
+
+#Docs {
+    display: block;
+    max-width: 750px;
+    width: 80%;
+}
+
+.method {
+    display: block;
+    width: 30%;
+    text-align: center;
+    padding: 5px 2px 5px 2px;
+    margin-bottom: 2px;
+    margin-top: 2px;
+
+    border: 1px solid black;
+
+    background-color: silver;
+    color: white;
+    text-decoration: none;
+    text-shadow: 0px 0px 10px black;
+    cursor: pointer;
+}
+
+.example {
+    display: block;
+    width: 100%;
+    min-width: 520px;
+
+    padding: 10px;
+
+    border: 1px solid silver;
+
+    background-color: whitesmoke;
+    color: black;
+    text-decoration: none;
+    
+}
+
+.exampleUrl {
+    display: block;
+    width: 70%;
+    text-align: center;
+    padding: 3px 2px 3px 2px;
+    margin-left: 3%;
+    margin-right: 3%;
+
+    border: 1px solid black;
+
+    background-color: silver;
+    color: white;
+    text-decoration: none;
+    text-shadow: 0px 0px 10px black;
+    cursor: pointer;
+}
+
+pre {
+    margin: 0px;
+}
+
+.example > pre {
+    margin-left: 3%;
+}

@@ -1,0 +1,6 @@
+Django==2.2.4
+django-cors-headers==3.0.2
+django-static-jquery3==3.3.1.1
+opcua==0.98.7
+graphene==2.1.8
+graphene-django==2.5.0

@@ -1,0 +1,22 @@
+{
+    "servers": [
+        {
+            "name": "Ilmatar",
+            "endPointAddress": "opc.tcp://10.211.1.11:4845",
+            "nameSpaceUri": "SYM:",
+            "browseRootNodeIdentifier": "s=SCF.PLC.DX_Custom_V"
+        },
+        {
+            "name": "IlmatarFull",
+            "endPointAddress": "opc.tcp://10.211.1.11:4845"
+        },
+        {
+            "name": "TestServerAdmin",
+            "endPointAddress": "opc.tcp://admin@localhost:4840/freeopcua/server/"
+        },
+        {
+            "name": "TestServer",
+            "endPointAddress": "opc.tcp://localhost:4840/freeopcua/server/"
+        }
+    ]
+}
