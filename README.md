@@ -33,7 +33,6 @@ The GraphQL API should work with most OPC UA specification compliant OPC UA serv
 ## Schema
 Schema shows you the available resources to query or mutate.
 It should give you a good idea on what resources are available.
-More extensive schema with descriptions can be found in [Wrapper/schema.json](https://version.aalto.fi/gitlab/hietalj3/ilmatar-http-wrapper/blob/master/Wrapper/schema.json)
 
 The "!" behind an input argument (e.g. server: String!) means that the argument is mandatory when retrieveing data from the resource.
 
@@ -167,7 +166,7 @@ name = response.json()["data"]["node"]["name"]
 ## Installation
 Clone the repository
 ```
-git clone https://version.aalto.fi/gitlab/hietalj3/ilmatar-http-wrapper.git
+git clone https://github.com/AaltoIIC/OPC-UA-GraphQL-Wrapper.git
 ```
 Browse to cloned project's folder. (Suggested to use virtualenv for following).
 ```
@@ -176,7 +175,7 @@ pip install -r requirements.txt
 
 <a name="setup"></a>
 ### Setup
-You may input your OPC UA server name and end point addresses to [Wrapper/servers.json](https://version.aalto.fi/gitlab/hietalj3/ilmatar-http-wrapper/blob/master/Wrapper/servers.json)
+You may input your OPC UA server name and end point addresses to [GraphQLWrap/servers.json](https://github.com/AaltoIIC/OPC-UA-GraphQL-Wrapper/blob/master/GraphQLWrap/servers.json)
 
 Alternatively, you can use the GraphQL API (once its running) to set up an OPC UA server.
 
@@ -212,13 +211,14 @@ Above URL has also a Graph*i*QL developer interface available if opening the URL
 <a name="deployment-to-raspberry-pi"></a>
 ### Deployment to Raspberry Pi
 
-#### Deploying the Django app to Raspberry Pi server
-A good guide on deploying the app can be found from
-[Here](https://www.digitalocean.com/community/tutorials/how-to-set-up-django-with-postgres-nginx-and-gunicorn-on-debian-9)
+#### Deploying the GraphQL Wrapper to a Raspberry Pi server
+Coming soonish with potentially a docker instructions as well
 
 #### Redeploying the Django app changes to (existing) Raspberry Pi server
 
-Use Ubuntu bash to run [redeployToRaspPi.sh](https://version.aalto.fi/gitlab/hietalj3/ilmatar-http-wrapper/blob/master/redeployToRaspPi.sh) script (Don't move the script from its location).
+(DOES NOT WORK ATM DUE TO RECENT CHANGES)
+
+Use Ubuntu bash to run [redeployToRaspPi.sh](https://github.com/AaltoIIC/OPC-UA-GraphQL-Wrapper/blob/master/redeployToRaspPi.sh) script (Don't move the script from its location).
 You may need to adjust the script if starting your own Raspberry Pi server.
 
 Ensure that you're connected to the same network as the Raspberry Pi.
