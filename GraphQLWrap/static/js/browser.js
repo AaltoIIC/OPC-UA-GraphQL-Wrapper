@@ -1,7 +1,8 @@
 // Function to browse nodes (folders) of OPC UA server from a web page.
 // Each click on node causes the function to retrieve from the server 
-// either subnodes of a node or value of the node.
-// Also constructs copyable path to last selected node for convenience.
+// subnodes of a node or value of the node.
+// Also constructs copyable node arguments and example queries to last
+// selected node for convenience.
 
 $(function() {
     "use strict";
@@ -80,8 +81,9 @@ $(function() {
                 const column = 'Column_' + (parseInt(thisColumn.split("_").pop()) + 1);
                 $("#" + column).nextAll().addBack().remove();
 
-                // Update path to correspond latest node click
-                $("#Path").text( targetUrl );
+                // Update arguments to correspond latest node click
+                $(".TargetServer").text('"' + server + '"');
+                $(".TargetNode").text('"' + nodeId + '"');
 
                 // Append constructed element to NodeRow
                 $("#NodeRow").append(
@@ -105,8 +107,9 @@ $(function() {
                 const column = 'Column_' + (parseInt(thisColumn.split("_").pop()) + 1);
                 $("#" + column).nextAll().addBack().remove();
 
-                // Update path to correspond latest node click
-                $("#Path").text( targetUrl );
+                // Update arguments to correspond latest node click
+                $("#TargetServer").text('"' + server + '"');
+                $("#TargetNode").text('"' + nodeId + '"');
 
                 $("#NodeRow").append(
                     "<td id = " + column + " class = 'column'>" + appendix + "</td>"

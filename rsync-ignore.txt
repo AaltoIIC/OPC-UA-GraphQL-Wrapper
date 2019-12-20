@@ -1,10 +1,13 @@
 venv
+winenv
+linenv
 .vscode
 .gitignore
 .git
+Tests
+Dockerfile
 rsync-ignore.txt
 README.md
+LICENSE
 redeployToRaspPi.sh
 GraphQLWrap/__pycache__
-Wrapper/__pycache__
-Testing

@@ -1,17 +1,15 @@
 import graphene
 from graphql.language import ast
-from graphql.execution.executor import collect_fields
 
 from opcua import ua
-from Wrapper.opcuautils import getServer, getServers, setupServers
+from opcuautils import getServer, getServers, setupServers
 
-import datetime, asyncio, json
+import datetime, asyncio, json, time
 
 useDataloader = True
 if useDataloader:
-    from Wrapper.dataloader import AttributeLoader, AttributeWriter
+    from dataloader import AttributeLoader
     attribute_loader = AttributeLoader(cache=False)
-    attribute_writer = AttributeWriter(cache=False)
 
 subscribeVariables = False
 
@@ -212,7 +210,11 @@ class OPCUANode(graphene.ObjectType):
     
     def resolve_variable_sub_nodes(self, info):
         self.set_node()
-        variableNodes = self.server_object.get_variable_nodes(self.node)
+        try:
+            variableNodes = self.server_object.get_variable_nodes(self.node)
+        except:
+            self.server_object.check_connection()
+            variableNodes = self.server_object.get_variable_nodes(self.node)
         nodes = []
         for variable in variableNodes:
             node_id = variable.nodeid.to_string()
@@ -298,39 +300,29 @@ class SetNodeValue(graphene.Mutation):
     Set value of an OPC UA variable node.
 
     Value has to be of correct dataType for the target variable node.
+    Including correct dataType for the target value speeds up
     """
 
     ok = graphene.Boolean(description=d_ok)
+    writeTime = graphene.Int(description="Time it took to write the value to the OPC UA server from the GraphQL API server")
 
     class Arguments:
         server = graphene.String(required=True, description=d_server)
         node_id = graphene.String(required=True, description=d_node_id)
         value = OPCUADataVariable(required=True, description=d_value)
+        dataType = graphene.String(description=d_data_type)
     
-    def mutate(self, info, server, node_id, value):
-        """
-        Sets value of node with given value
-        Returns set value, dataType and ok=True if successful
-        """
-
+    def mutate(self, info, server, node_id, value, dataType=None):
+        start = time.time()
         server = getServer(server)
-        if useDataloader:
-            node = server.get_node(node_id)
-            variantType = server.variant_type_finder(value, node)
-            attributeKey = server.name + "/" + node_id + "/Value/" + str(value) + "/" + variantType.name
-
-            return attribute_writer.load(attributeKey).then(lambda x : 
-                SetNodeValue(ok = x.is_good())
-            )
-        else:
-            node = server.get_node(node_id)
-            server.set_node_value(node, value)
-
-            return SetNodeValue(ok = True)
+        ok = server.set_node_attribute(node_id, "Value", value, dataType)
+        writeTime = int((time.time() - start)*1000)
+        return SetNodeValue(ok = ok, writeTime = writeTime)
 
 class SetNodeDescription(graphene.Mutation):
     """
     Set description of an OPC UA node.
+    Requires admin access.
 
     Description must be a string.
     """
@@ -346,21 +338,8 @@ class SetNodeDescription(graphene.Mutation):
     def mutate(self, info, server, node_id, description):
 
         server = getServer(server)
-        
-        if useDataloader:
-            attributeKey = server.name + "/" + node_id + "/Description/" + str(description) + "/String"
-
-            return attribute_writer.load(attributeKey).then(lambda x : 
-                SetNodeDescription(ok = x.is_good())
-            )
-        else:
-            node = server.get_node(node_id)
-            result = server.set_node_description(node, description)
-
-            return SetNodeDescription(
-                description=result["description"],
-                ok=True
-            )
+        ok = server.set_node_attribute(node_id, "Description", description)
+        return SetNodeDescription(ok = ok)
 
 class AddNode(graphene.Mutation):
     """
@@ -461,16 +440,16 @@ class AddServer(graphene.Mutation):
     def mutate(self, info, name, endPointAddress):
 
         ok = False
-        serverExists = True
-        try:
-            server = getServer(name)
-        except ValueError:
-            serverExists = False
+        serverExists = False
+        servers = getServers()
+        for server in servers:
+            if server.name == name:
+                serverExists = True
             
         if serverExists:
             raise ValueError("Server with that name is already configured")
 
-        with open("Wrapper/servers.json", "r+") as serversFile:
+        with open(os.path.join(os.getcwd(), os.path.dirname(__file__), "servers.json"), "r+") as serversFile:
             servers = json.load(serversFile)
             servers["servers"].append({
                 "name": name,
@@ -503,7 +482,7 @@ class DeleteServer(graphene.Mutation):
         
         ok = False
         server = getServer(name)
-        with open("Wrapper/servers.json", "r+") as serversFile:
+        with open(os.path.join(os.getcwd(), os.path.dirname(__file__), "servers.json"), "r+") as serversFile:
             servers = json.load(serversFile)
             i = 0
             for server in servers["servers"]:
@@ -635,6 +614,6 @@ class Subscription(graphene.ObjectType):
 
 schema = graphene.Schema(
     query=Query,
-    mutation=Mutation
-    #subscription=Subscription
+    mutation=Mutation,
+    #subscription=Subscription,
 )

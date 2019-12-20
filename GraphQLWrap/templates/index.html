@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+
+    <title>GraphQL API for OPC UA servers</title>
+
+    
+    <!-- CSS -->
+    <!-- <link rel = "stylesheet" type = "text/css" href = "/static/css/browser.css"> -->
+    <!-- Favicon -->
+    <!-- <link rel = "icon" type = "image/png" href = "/static/favicon/favicon.png" sizes = "96x96"> -->
+    <!-- jQuery -->
+    <!-- <script src = "/static/jquery/jquery-3.4.1.min.js"></script> -->
+    <!-- JS -->
+    <!-- <script src = "/static/js/browser.js"></script> -->
+
+    <!-- CSS -->
+    <link rel = "stylesheet" href = "{{ url_for('static', path='css/browser.css') }}">
+    <!-- Favicon -->
+    <link rel = "icon" type = "image/png" href = "{{ url_for('static', path='favicon/favicon.png') }}" sizes = "96x96">
+    <!-- jQuery -->
+    <script src = "{{ url_for('static', path='jquery/jquery-3.4.1.min.js') }}"></script>
+    <!-- JS -->
+    <script src = "{{ url_for('static', path='js/browser.js') }}"></script>
+
+  </head>
+  <header>
+
+  </header>
+  <body>
+
+    <div id = "Header">
+      <span id = "Title">OPC UA GraphQL Wrapper</span>
+      <a id = "GitHubUrl" href = "https://github.com/AaltoIIC/OPC-UA-GraphQL-Wrapper">GitHub</a><br><br>
+      <span id = "BrowserHeader">OPC UA Node browser</span><br>
+      <span id = "ArgumentHeader">Node arguments for GraphQL queries</span><br>
+      <span class = "argument">server: </span><span class = "TargetServer"></span><br>
+      <span class = "argument">nodeId: </span><span class = "TargetNode"></span>
+    </div>
+
+    <table id = "BrowserTable">
+      <tbody>
+        <tr id = "NodeRow">
+          <td id = 'Column_1' class = 'column'>
+            <table>
+              {% for server in servers %}
+                <tr><a class = 'object' href = "{{ request.url }}{{ server.name }}">{{ server.name }}</a></tr>
+              {% endfor %}
+            </table>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <div id = "QuickExamples">
+      <h3>GraphQL queries are POST in JSON format to URL:</h3>
+      <a id = "GraphQLUrl" href = "{{ request.url }}graphql">{{ url }}graphql</a>
+      <p>Queries can be tested and more documentation can be found at the same URL.</p>
+
+      <span id = "ExampleHeader">Autofilled example queries</span><br>
+      <span id = "ExampleHeader">Read:</span><br>
+      <pre>
+<span>query {</span>
+<span>  node(server: </span><span class = "TargetServer"></span><span>, nodeId: </span><span class = "TargetNode"></span><span>) {</span>
+<span>    name</span>
+<span>    variable {</span>
+<span>        value</span>
+<span>        dataType</span>
+<span>    }</span>
+<span>  }</span>
+<span>}</span>
+      </pre>
+      
+      <span id = "ExampleHeader">Write:</span><br>
+      <pre>
+<span>mutation {</span>
+<span>  setValue(server: </span><span class = "TargetServer"></span><span>, nodeId: </span><span class = "TargetNode"></span><span>, value: value, dataType: "dataType") {</span>
+<span>    ok</span>
+<span>  }</span>
+<span>}</span>
+      </pre>
+    </div>
+    
+  </body>
+</html>

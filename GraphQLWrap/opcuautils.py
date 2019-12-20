@@ -4,9 +4,7 @@ Functions for retrieving data from OPC UA server
 """
 
 from opcua import Client, ua
-from opcua.common import manage_nodes
-from django.conf import settings
-import datetime, json
+import os, datetime, json
 
 # List that will contain all OPCUAServer objects
 serverList = []
@@ -29,11 +27,11 @@ def getServers():
 
 def setupServers():
     """
-    Finds servers based on what's configured in settings.OPC_UA_SERVERS
+    Finds servers based on what's configured in servers.json
     Creates OPCUAServer instances and adds them to serverList
     """
     serverList.clear()
-    with open("Wrapper/servers.json") as serversFile:
+    with open(os.path.join(os.getcwd(), os.path.dirname(__file__), "servers.json")) as serversFile:
         servers = json.load(serversFile)["servers"]
         for server in servers:
             serverList.append(OPCUAServer(
@@ -60,6 +58,7 @@ class OPCUAServer(object):
         self.client = Client(self.endPointAddress, timeout=2)
         self.sub = None
         self.subscriptions = {}
+        self.connectedToServer = False
         #----------------------------
 
     def check_connection(self):
@@ -81,7 +80,9 @@ class OPCUAServer(object):
                     self.client.disconnect()
                 except:
                     pass
+                self.connectedToServer = False
                 raise ConnectionError("Connection to " + self.name + " failed/timed out")
+        self.connectedToServer = True
         return
 
     def update_namespace_and_root_node_id(self):
@@ -126,10 +127,11 @@ class OPCUAServer(object):
         Returns node from nodeId or identifier
         If no namespace given in nodeId,
         assumes the namespace to namespace given for the server in settings.py
-        Only the ns set for the server in settings.py is accessible
+        Only the ns set for the server in servers.json is accessible
         """
-
-        self.check_connection()
+        if not self.connectedToServer:
+            self.check_connection()
+        
         if nodeId == "":
             nodeId = self.rootNodeId
         elif self.nameSpaceIndex == None:
@@ -144,38 +146,6 @@ class OPCUAServer(object):
             nodeId = f"ns={self.nameSpaceIndex};{nodeId}"
 
         return self.client.get_node(nodeId)
-
-    def get_node_value_or_subnodes(self, node):
-        """
-        Returns either node value, or subnodes of node with given path
-        """
-
-        # Get node class to determine what to get from node
-        nodeClass = node.get_node_class()
-        if nodeClass == 2:
-            # Get node value
-            attribute = node.get_attribute(ua.AttributeIds.Value)
-            result = {
-                "value": attribute.Value.Value,
-                "dataType": attribute.Value.VariantType.name,
-                "serverName": self.name
-            }
-        elif nodeClass == 1:
-            # Get and add subnode names to list
-            subnodes = []
-            for subNode in node.get_children():
-                nodeId = subNode.nodeid.to_string()
-                subnodes.append({
-                    "name": subNode.get_display_name().to_string(),
-                    "nodePath": self.get_node_path(nodeId),
-                    "nodeId": nodeId,
-                    "serverName": self.name
-                })
-            result = {"objects": subnodes}
-        else:
-            raise ValueError("Target has unsupported node class type")
-        
-        return result
 
     #def get_variable_nodes(self, nodes, variableList=None, depth=0, maxDepth=10):
     def get_variable_nodes(self, node, nodeClass=2, variableList=None, depth=0, maxDepth=10):
@@ -207,52 +177,6 @@ class OPCUAServer(object):
         """
 
         return variableList
-
-    def get_variable_information(self, variableNodes, variableList=None):
-
-        """
-        Eats a list of variable nodes and possible parentNode, which affects the node paths returned
-        Returns a dictionary with keys as node paths and values as dictionaries with keys for
-        name, value, dataType, sourceTimestamp, statusCode, path, nodeId, serverName
-        """
-
-        if variableList == None:
-            variableList = []
-
-        for variable in variableNodes:
-
-            nodeId = variable.nodeid.to_string()
-            name = variable.get_attribute(ua.AttributeIds.DisplayName).Value.Value.Text
-            attribute = variable.get_attribute( ua.AttributeIds.Value )
-
-            variableList.append({
-                "name": name,
-                "value": attribute.Value.Value,
-                "dataType": attribute.Value.VariantType.name,
-                "sourceTimestamp": attribute.SourceTimestamp,
-                "statusCode": attribute.StatusCode.name,
-                "path": self.get_node_path(nodeId),
-                "nodeId": nodeId,
-                "serverName": self.name
-            })
-
-        return variableList
-
-    def get_variables(self, node=None):
-        """
-        Gets all variables hierarchically below the given node
-        Returns a list of node value dictionaries
-        """
-
-        if node == None:
-            parentNode = self.get_node(self.rootNodeId)
-        else:
-            parentNode = self.get_node(node)
-
-        variableNodes = self.get_variable_nodes(parentNode)
-        varInfo = self.get_variable_information(variableNodes)
-
-        return varInfo
     
     def subscribe_variable(self, nodeId):
 
@@ -266,53 +190,56 @@ class OPCUAServer(object):
         else:
             return None
 
-
     def datachange_notification(self, node, value, data):
 
         self.subscriptions[node.nodeid.to_string()] = data.monitored_item.Value
 
-
-    def set_node_value(self, node, value):
-        """ Sets value to node """
-
-        # Get node variable's variant type
-        variantType = self.variant_type_finder(value, node)
-        variant = ua.Variant(value, variantType)
-        datavalue = ua.DataValue(variant)
-        sourceTimestamp = datetime.datetime.utcnow()
-        #datavalue.SourceTimestamp = sourceTimestamp
-
-        # Set node value
-        node.set_value(datavalue)
-        return {
-            "value": value,
-            "dataType": variantType,
-            "statusCode": "Good",
-            "sourceTimestamp": sourceTimestamp
-        }
-
-
-    def set_node_description(self, node, description):
+    def set_node_attribute(self, nodeId, attribute, value, dataType=None):
         """
-        Sets description attribute to node
-        (Requires admin powers)
+        Sets node attribute based on given arguments.
+        Giving correct dataType for value and node speeds
+        up the write operation.
 
-        Create a DataValue with LocalizedText that includes the description
-        and write it to the description attribute of the Node.
+        Arguments                               Example
+        nodeId:     Target nodeId               "ns=2;i=2"
+        attribute:  Target attribute of node    "Value"
+        value:      Value for the attribute     1234
+        dataType:   Data type of value          "Int32"
 
+        Results
+        boolean:    Indicates success           True
         """
 
-        node.set_attribute(ua.AttributeIds.Description, ua.DataValue(ua.LocalizedText(description)))
+        attr = ua.WriteValue()
 
-        return {
-            "description": description
-        }
+        if nodeId == "":
+            attr.NodeId = ua.NodeId.from_string(self.rootNodeId)
+        else:
+            attr.NodeId = ua.NodeId.from_string(nodeId)
+
+        attr.AttributeId = ua.AttributeIds[attribute]
+
+        if attribute == "Description":
+            dataValue = ua.LocalizedText(value)
+        else:
+            if dataType == None:
+                variantType = self.variant_type_finder(value, nodeId)
+            else:
+                variantType = ua.VariantType[dataType]
+            dataValue = ua.Variant(value, variantType)
+        attr.Value = ua.DataValue(dataValue)
+        
+        params = ua.WriteParameters()
+        params.NodesToWrite.append(attr)
+
+        result = self.write(params)
+        return result[0].is_good()
 
     def add_node(self, name, nodeId, parentId, value=None, writable=True):
         """
         Adds a node to OPC UA server
         If value given, adds a variable node, else, a folder node
-        Requires server admin powers in server settings.py, for example
+        Requires server admin powers in server servers.json, for example
         endPointAddress: "opc.tcp://admin@0.0.0.0:4840/freeopcua/server/"
         """
 
@@ -326,15 +253,24 @@ class OPCUAServer(object):
         parentNode = self.get_node(parentId)
         
         if value == None:
-            node = parentNode.add_folder(nodeId, browseName)
+            try:
+                node = parentNode.add_folder(nodeId, browseName)
+            except:
+                self.check_connection()
+                node = parentNode.add_folder(nodeId, browseName)
             result = {
                 "name": node.get_display_name().to_string(),
                 "nodeId": node.nodeid.to_string(),
             }
         else:
-            node = parentNode.add_variable(nodeId, browseName, value)
-
-            attribute = node.get_attribute(ua.AttributeIds.Value)
+            try:
+                node = parentNode.add_variable(nodeId, browseName, value)
+                attribute = node.get_attribute(ua.AttributeIds.Value)
+            except:
+                self.check_connection()
+                node = parentNode.add_variable(nodeId, browseName, value)
+                attribute = node.get_attribute(ua.AttributeIds.Value)
+            
             result = {
                 "name": node.get_display_name().to_string(),
                 "nodeId": node.nodeid.to_string(),
@@ -357,11 +293,48 @@ class OPCUAServer(object):
         """
 
         node = self.get_node(nodeId)
-        result = self.client.delete_nodes([node], recursive)
+        try:
+            result = self.client.delete_nodes([node], recursive)
+        except:
+            self.check_connection()
+            result = self.client.delete_nodes([node], recursive)
         return result
 
+    def read(self, params):
+        """
+        Reads from OPC UA server
+        params == ua.ReadParameters() that are properly set up
+        """
 
-    def variant_type_finder(self, value, node):
+        if not self.connectedToServer:
+            self.check_connection()
+
+        try:
+            results = self.client.uaclient.read(params)
+        except:
+            self.check_connection()
+            results = self.client.uaclient.read(params)
+
+        return results
+    
+    def write(self, params):
+        """
+        Writes to OPC UA server
+        params == ua.WriteParameters() that are properly set up
+        """
+
+        if not self.connectedToServer:
+            self.check_connection()
+
+        try:
+            results = self.client.uaclient.write(params)
+        except:
+            self.check_connection()
+            results = self.client.uaclient.write(params)
+
+        return results
+
+    def variant_type_finder(self, value, nodeId):
         valueType = type(value)
         if isinstance(valueType, datetime.datetime):
             variantType = ua.uatypes.VariantType.DateTime
@@ -369,28 +342,15 @@ class OPCUAServer(object):
             variantType = ua.uatypes.VariantType.Boolean
         elif valueType == str:
             variantType = ua.uatypes.VariantType.String
-        elif node.nodeid.to_string().lower().endswith(".watchdog"):
-            variantType = ua.uatypes.VariantType.Int16
         elif valueType == int or valueType == float:
-            variantType = node.get_data_type_as_variant_type()
+            node = self.get_node(nodeId)
+            try:
+                variantType = node.get_data_type_as_variant_type()
+            except:
+                self.check_connection()
+                variantType = node.get_data_type_as_variant_type()
         else:
             raise ValueError("Unsupported datatype")
         return variantType
-    
-    def string_to_value(self, value):
-        try:
-            if isinstance(value, (datetime.date, datetime.datetime)):
-                value = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f")
-            elif "." in value:
-                value = float(value)
-            elif value.isdigit():
-                value = int(value)
-            elif value in ("True", "true"):
-                value = True
-            elif value in ("False", "false"):
-                value = False
-        except:
-            raise ValueError("Unsupported datatype")
-        return value
 
 setupServers()

@@ -4,7 +4,7 @@ This project wraps OPC UA servers with a GraphQL API so that most of the informa
 
 Information on GraphQL can be found [here](https://graphql.org/)
 
-[Django](https://www.djangoproject.com/) framework and [graphene-django](https://github.com/graphql-python/graphene-django) library are mainly used to build the web interface
+[Starlette](https://www.starlette.io/) framework and [graphene](https://github.com/graphql-python/graphene) library are mainly used to build the web interface
 
 Communication with the OPC UA in the backend is done with the help of [python-opcua](https://github.com/FreeOpcUa/python-opcua) library
 
@@ -191,13 +191,13 @@ mutation {
 ```
 
 <a name="running-the-api-locally"></a>
-### Running the API locally
+### Running the API locally as development server
 
 From the cloned project root folder run the command:
 
 (Within virtualenv, if used)
 ```
-python manage.py runserver
+uvicorn main:app --reload
 ```
 Application index is now available at localhost via port 8000. On the index page you can find an OPC UA server browser that can be used to familiarize yourself with the OPC UA server node structures.
 ```
