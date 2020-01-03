@@ -85,20 +85,26 @@ class OPCUAServer(object):
 
         try:
             self.client.get_node("i=2259").get_value()
-            if self.rootNodeId == None:
-                self.update_namespace_and_root_node_id()
-        except:    
+            self.connectedToServer = True
+        except AttributeError as e:
+            self.logger.info("Connection to " + self.name + " is not up.")
+            self.connectedToServer = False
+
+        if self.connectedToServer is False:
             try:
+                self.logger.info("Connecting to " + self.name + ".")
                 self.client.connect()
                 self.update_namespace_and_root_node_id()
-            except:
+                self.connectedToServer = True
+            except socket.timeout:
+                self.logger.info(self.name + " socket timed out.")
                 try:
-                    self.client.disconnect()
-                except:
+                    self.logger.info("Cleaning up session and socket.")
+                    self.client.uaclient.disconnect()
+                except AttributeError:
                     pass
-                self.connectedToServer = False
-                raise ConnectionError("Connection to " + self.name + " failed/timed out")
-        self.connectedToServer = True
+                self.logger.info("Socket and session cleaned up.")
+                raise TimeoutError(self.name + " timed out.")
         return
 
     def update_namespace_and_root_node_id(self):
@@ -148,7 +154,7 @@ class OPCUAServer(object):
         """
         if not self.connectedToServer:
             self.check_connection()
-        
+
         if nodeId == "":
             nodeId = self.rootNodeId
         elif self.nameSpaceIndex is None:
@@ -201,7 +207,7 @@ class OPCUAServer(object):
             )
 
         return variableList
-    
+
     def subscribe_variable(self, nodeId):
 
         if self.sub is None:
@@ -252,7 +258,7 @@ class OPCUAServer(object):
                 variantType = ua.VariantType[dataType]
             dataValue = ua.Variant(value, variantType)
         attr.Value = ua.DataValue(dataValue)
-        
+
         params = ua.WriteParameters()
         params.NodesToWrite.append(attr)
 
@@ -275,7 +281,7 @@ class OPCUAServer(object):
             index = 0
         browseName = f"{index}:{name}"
         parentNode = self.get_node(parentId)
-        
+
         if value is None:
             try:
                 node = parentNode.add_folder(nodeId, browseName)
@@ -293,7 +299,7 @@ class OPCUAServer(object):
                 self.check_connection()
                 node = parentNode.add_variable(nodeId, browseName, value)
                 attribute = node.get_attribute(ua.AttributeIds.Value)
-            
+
             result = {
                 "name": node.get_display_name().to_string(),
                 "nodeId": node.nodeid.to_string(),
@@ -302,7 +308,7 @@ class OPCUAServer(object):
                 "sourceTimestamp": attribute.SourceTimestamp,
                 "statusCode": attribute.StatusCode.name
             }
-        
+
             if writable is True:
                 node.set_writable()
 
@@ -340,7 +346,7 @@ class OPCUAServer(object):
             results = self.client.uaclient.read(params)
 
         return results
-    
+
     def write(self, params):
         """
         Writes to OPC UA server
