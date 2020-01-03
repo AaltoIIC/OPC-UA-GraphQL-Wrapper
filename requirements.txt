@@ -1,6 +1,8 @@
 aiofiles==0.4.0
 aniso8601==7.0.0
+cffi==1.13.2
 Click==7.0
+cryptography==2.8
 graphene==2.1.8
 graphql-core==2.2.1
 graphql-relay==2.0.1
@@ -11,6 +13,7 @@ lxml==4.4.2
 MarkupSafe==1.1.1
 opcua==0.98.8
 promise==2.2.1
+pycparser==2.19
 python-dateutil==2.8.1
 pytz==2019.3
 Rx==1.6.1
