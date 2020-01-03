@@ -1,6 +1,6 @@
 """
-Utilities used with views and schemas
-Functions for retrieving data from OPC UA server
+Utilities used by schemas and dataloader.
+Functions for retrieving data from OPC UA server.
 """
 
 from opcua import Client, ua
@@ -16,8 +16,9 @@ serverList = []
 
 def getServer(serverName):
     """
-    Returns server object that has the corresponding server name
+    Returns server object that has the corresponding server name.
     """
+
     for server in serverList:
         if server.name == serverName:
             return server
@@ -27,16 +28,18 @@ def getServer(serverName):
 
 def getServers():
     """
-    Returns set up servers
+    Returns set up servers.
     """
+
     return serverList
 
 
 def setupServers():
     """
-    Finds servers based on what's configured in servers.json
-    Creates OPCUAServer instances and adds them to serverList
+    Finds servers based on what's configured in servers.json.
+    Creates OPCUAServer instances and adds them to serverList.
     """
+
     serverList.clear()
     with open(os.path.join(
         os.getcwd(),
@@ -74,43 +77,45 @@ class OPCUAServer(object):
         self.client = Client(self.endPointAddress, timeout=2)
         self.sub = None
         self.subscriptions = {}
-        self.connectedToServer = False
         # ----------------------------
 
     def check_connection(self):
         """
-        Try to get server state (id: i=2259) from server.
-        If fails, try to (re)connect
+        Check if a connection has been established before
+        or if connection thread is running.
+
+        If either fails, try to (re)connect.
+        """
+
+        if self.client.uaclient._uasocket is None:
+            self.connect()
+        elif not self.client.uaclient._uasocket._thread.isAlive():
+            self.connect()
+
+    def connect(self):
+        """
+        Connect to OPC UA server.
+        If fails clean up session and socket, and raise exception.
         """
 
         try:
-            self.client.get_node("i=2259").get_value()
-            self.connectedToServer = True
-        except AttributeError as e:
-            self.logger.info("Connection to " + self.name + " is not up.")
-            self.connectedToServer = False
-
-        if self.connectedToServer is False:
+            self.logger.info("Connecting to " + self.name + ".")
+            self.client.connect()
+            self.update_namespace_and_root_node_id()
+        except socket.timeout:
+            self.logger.info(self.name + " socket timed out.")
             try:
-                self.logger.info("Connecting to " + self.name + ".")
-                self.client.connect()
-                self.update_namespace_and_root_node_id()
-                self.connectedToServer = True
-            except socket.timeout:
-                self.logger.info(self.name + " socket timed out.")
-                try:
-                    self.logger.info("Cleaning up session and socket.")
-                    self.client.uaclient.disconnect()
-                except AttributeError:
-                    pass
-                self.logger.info("Socket and session cleaned up.")
-                raise TimeoutError(self.name + " timed out.")
-        return
+                self.logger.info("Cleaning up session and socket.")
+                self.client.uaclient.disconnect()
+            except AttributeError:
+                pass
+            self.logger.info("Socket and session cleaned up.")
+            raise TimeoutError(self.name + " timed out.")
 
     def update_namespace_and_root_node_id(self):
         """
-        Update rootNodeId and nameSpaceIndex
-        If no namespace given, sets root node (id: i=84) as root node
+        Update rootNodeId and nameSpaceIndex.
+        If no namespace given, sets root node (id: i=84) as root node.
         """
 
         if self.nameSpaceUri and self.browseRootNodeIdentifier:
@@ -130,9 +135,10 @@ class OPCUAServer(object):
 
     def get_node_path(self, nodeId):
         """
-        Create node path from node id for current server settings
-        Attempts to create a path of node from rootNode
-        Only works for folderly like string node ids (folders separated by ".")
+        Create node path from node id for current server settings.
+        Attempts to create a path of node from rootNode.
+        Only works for folderly like string node ids
+        (folders separated by ".").
         """
 
         identifierType = rootNodeId.split(";")[-1].split("=")[0]
@@ -147,13 +153,14 @@ class OPCUAServer(object):
 
     def get_node(self, nodeId=""):
         """
-        Returns node from nodeId or identifier
+        Returns node from nodeId or identifier.
         If no namespace given in nodeId,
-        assumes the namespace to namespace given for the server in settings.py
-        Only the ns set for the server in servers.json is accessible
+        assumes the namespace to namespace given for the server in settings.py.
+        Only the ns set for the server in servers.json is accessible via
+        browsing.
         """
-        if not self.connectedToServer:
-            self.check_connection()
+
+        self.check_connection()
 
         if nodeId == "":
             nodeId = self.rootNodeId
@@ -175,9 +182,9 @@ class OPCUAServer(object):
         nodeClass=2, variableList=None, depth=0, maxDepth=10
     ):
         """
-        Eats a list of node object(s)
-        Recursively finds nodes under given nodes that have given nodeClass
-        Returns node objects in a list
+        Eats a list of node object(s).
+        Recursively finds nodes under given nodes that have given nodeClass.
+        Returns node objects in a list.
         """
 
         if variableList is None:
@@ -267,11 +274,13 @@ class OPCUAServer(object):
 
     def add_node(self, name, nodeId, parentId, value=None, writable=True):
         """
-        Adds a node to OPC UA server
-        If value given, adds a variable node, else, a folder node
+        Adds a node to OPC UA server.
+        If value given, adds a variable node, else, a folder node.
         Requires server admin powers in server servers.json, for example
-        endPointAddress: "opc.tcp://admin@0.0.0.0:4840/freeopcua/server/"
+        endPointAddress: "opc.tcp://admin@0.0.0.0:4840/freeopcua/server/".
         """
+
+        self.check_connection()
 
         if self.nameSpaceIndex is not None:
             index = self.nameSpaceIndex
@@ -283,23 +292,14 @@ class OPCUAServer(object):
         parentNode = self.get_node(parentId)
 
         if value is None:
-            try:
-                node = parentNode.add_folder(nodeId, browseName)
-            except:
-                node = parentNode.add_folder(nodeId, browseName)
+            node = parentNode.add_folder(nodeId, browseName)
             result = {
                 "name": node.get_display_name().to_string(),
                 "nodeId": node.nodeid.to_string(),
             }
         else:
-            try:
-                node = parentNode.add_variable(nodeId, browseName, value)
-                attribute = node.get_attribute(ua.AttributeIds.Value)
-            except:
-                self.check_connection()
-                node = parentNode.add_variable(nodeId, browseName, value)
-                attribute = node.get_attribute(ua.AttributeIds.Value)
-
+            node = parentNode.add_variable(nodeId, browseName, value)
+            attribute = node.get_attribute(ua.AttributeIds.Value)
             result = {
                 "name": node.get_display_name().to_string(),
                 "nodeId": node.nodeid.to_string(),
@@ -316,55 +316,39 @@ class OPCUAServer(object):
 
     def delete_node(self, nodeId, recursive=True):
         """
-        Recursively deletes node and it's subnodes unless recursive=False
-        Requires admins
-        Doesn't raise errors if deleting is unsuccessful
+        Recursively deletes node and it's subnodes unless recursive=False.
+        Requires admins.
+        Doesn't raise errors if deleting is unsuccessful.
         """
 
+        self.check_connection()
         node = self.get_node(nodeId)
-        try:
-            result = self.client.delete_nodes([node], recursive)
-        except:
-            self.check_connection()
-            result = self.client.delete_nodes([node], recursive)
-        return result
+        return self.client.delete_nodes([node], recursive)
 
     def read(self, params):
         """
         Reads from OPC UA server
-        params == ua.ReadParameters() that are properly set up
+        params == ua.ReadParameters() that are properly set up.
         """
 
-        if not self.connectedToServer:
-            self.check_connection()
-
-        try:
-            results = self.client.uaclient.read(params)
-        except socket.timeout:
-            self.logger.info("TIMEOUT!!!")
-            self.check_connection()
-            results = self.client.uaclient.read(params)
-
-        return results
+        self.check_connection()
+        return self.client.uaclient.read(params)
 
     def write(self, params):
         """
         Writes to OPC UA server
-        params == ua.WriteParameters() that are properly set up
+        params == ua.WriteParameters() that are properly set up.
         """
 
-        if not self.connectedToServer:
-            self.check_connection()
-
-        try:
-            results = self.client.uaclient.write(params)
-        except:
-            self.check_connection()
-            results = self.client.uaclient.write(params)
-
-        return results
+        self.check_connection()
+        return self.client.uaclient.write(params)
 
     def variant_type_finder(self, value, nodeId):
+        """
+        Attempts to find variant type of given value.
+        If not found, retrieves variant type of node from OPC UA server.
+        """
+
         valueType = type(value)
         if isinstance(valueType, datetime.datetime):
             variantType = ua.uatypes.VariantType.DateTime
@@ -374,11 +358,8 @@ class OPCUAServer(object):
             variantType = ua.uatypes.VariantType.String
         elif valueType == int or valueType == float:
             node = self.get_node(nodeId)
-            try:
-                variantType = node.get_data_type_as_variant_type()
-            except:
-                self.check_connection()
-                variantType = node.get_data_type_as_variant_type()
+            self.check_connection()
+            variantType = node.get_data_type_as_variant_type()
         else:
             raise ValueError("Unsupported datatype")
         return variantType
