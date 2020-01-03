@@ -4,10 +4,15 @@ Functions for retrieving data from OPC UA server
 """
 
 from opcua import Client, ua
-import os, datetime, json
+import os
+import datetime
+import json
+import logging
+import socket
 
 # List that will contain all OPCUAServer objects
 serverList = []
+
 
 def getServer(serverName):
     """
@@ -19,11 +24,13 @@ def getServer(serverName):
     else:
         raise ValueError("Server not found in server list")
 
+
 def getServers():
     """
     Returns set up servers
     """
     return serverList
+
 
 def setupServers():
     """
@@ -31,15 +38,20 @@ def setupServers():
     Creates OPCUAServer instances and adds them to serverList
     """
     serverList.clear()
-    with open(os.path.join(os.getcwd(), os.path.dirname(__file__), "servers.json")) as serversFile:
+    with open(os.path.join(
+        os.getcwd(),
+        os.path.dirname(__file__),
+        "servers.json")
+    ) as serversFile:
         servers = json.load(serversFile)["servers"]
         for server in servers:
             serverList.append(OPCUAServer(
-                name = server.get("name"),
-                endPointAddress = server.get("endPointAddress"),
-                nameSpaceUri = server.get("nameSpaceUri"),
-                browseRootNodeIdentifier = server.get("browseRootNodeIdentifier")
+                name=server.get("name"),
+                endPointAddress=server.get("endPointAddress"),
+                nameSpaceUri=server.get("nameSpaceUri"),
+                browseRootNodeIdentifier=server.get("browseRootNodeIdentifier")
             ))
+
 
 class OPCUAServer(object):
     """
@@ -47,9 +59,13 @@ class OPCUAServer(object):
     Methods are called to get node data from the server.
     """
 
-    def __init__(self, name, endPointAddress, nameSpaceUri=None, browseRootNodeIdentifier=None):
-        #---------- Setup -----------
+    def __init__(
+        self, name, endPointAddress,
+        nameSpaceUri=None, browseRootNodeIdentifier=None
+    ):
+        # ---------- Setup -----------
         self.name = name
+        self.logger = logging.getLogger(self.name)
         self.endPointAddress = endPointAddress
         self.nameSpaceUri = nameSpaceUri
         self.nameSpaceIndex = None
@@ -59,7 +75,7 @@ class OPCUAServer(object):
         self.sub = None
         self.subscriptions = {}
         self.connectedToServer = False
-        #----------------------------
+        # ----------------------------
 
     def check_connection(self):
         """
@@ -113,9 +129,10 @@ class OPCUAServer(object):
         Only works for folderly like string node ids (folders separated by ".")
         """
 
-        rootNodeId = self.rootNodeId
-        if (rootNodeId.split(";")[-1].split("=")[0] == "s") and ("." in rootNodeId):
-            nodePath = nodeId.lower().split(rootNodeId.lower().split(".")[-1])[-1]
+        identifierType = rootNodeId.split(";")[-1].split("=")[0]
+        if (identifierType == "s") and ("." in rootNodeId):
+            rootNodeName = self.rootNodeId.lower().split(".")[-1]
+            nodePath = nodeId.lower().split(rootNodeName)[-1]
             nodePath = nodePath.replace(".", "", 1).replace(".", "/")
         else:
             nodePath = nodeId.split("=")[-1]
@@ -134,7 +151,7 @@ class OPCUAServer(object):
         
         if nodeId == "":
             nodeId = self.rootNodeId
-        elif self.nameSpaceIndex == None:
+        elif self.nameSpaceIndex is None:
             nodeId = nodeId
         elif nodeId[:3] == "ns=":
             identifier = nodeId.split(";")[-1]
@@ -147,15 +164,17 @@ class OPCUAServer(object):
 
         return self.client.get_node(nodeId)
 
-    #def get_variable_nodes(self, nodes, variableList=None, depth=0, maxDepth=10):
-    def get_variable_nodes(self, node, nodeClass=2, variableList=None, depth=0, maxDepth=10):
+    def get_variable_nodes(
+        self, node,
+        nodeClass=2, variableList=None, depth=0, maxDepth=10
+    ):
         """
         Eats a list of node object(s)
         Recursively finds nodes under given nodes that have given nodeClass
         Returns node objects in a list
         """
 
-        if variableList == None:
+        if variableList is None:
             variableList = []
 
         depth += 1
@@ -163,24 +182,29 @@ class OPCUAServer(object):
             return variableList
 
         nodes = node.get_children()
+        params = ua.ReadParameters()
         for node in nodes:
-            if nodeClass == node.get_attribute(ua.AttributeIds.NodeClass).Value.Value:
-                variableList.append(node)
-            self.get_variable_nodes(node=node, nodeClass=nodeClass, variableList=variableList, depth=depth)
+            rv = ua.ReadValueId()
+            rv.NodeId = node.nodeid
+            rv.AttributeId = ua.AttributeIds.NodeClass
+            params.NodesToRead.append(rv)
+        results = self.read(params)
 
-        """
-        nodeClass = node.get_attribute(ua.AttributeIds.NodeClass).Value.Value
-        if nodeClass == 1:
-            self.get_variable_nodes(nodes=node.get_children(), variableList=variableList, depth=depth)
-        elif nodeClass == 2:
-            variableList.append(node)
-        """
+        for i in range(len(results)):
+            if nodeClass == results[i].Value.Value:
+                variableList.append(nodes[i])
+            self.get_variable_nodes(
+                node=nodes[i],
+                nodeClass=nodeClass,
+                variableList=variableList,
+                depth=depth
+            )
 
         return variableList
     
     def subscribe_variable(self, nodeId):
 
-        if self.sub == None:
+        if self.sub is None:
             handler = self
             self.sub = self.client.create_subscription(100, handler)
 
@@ -222,7 +246,7 @@ class OPCUAServer(object):
         if attribute == "Description":
             dataValue = ua.LocalizedText(value)
         else:
-            if dataType == None:
+            if dataType is None:
                 variantType = self.variant_type_finder(value, nodeId)
             else:
                 variantType = ua.VariantType[dataType]
@@ -243,7 +267,7 @@ class OPCUAServer(object):
         endPointAddress: "opc.tcp://admin@0.0.0.0:4840/freeopcua/server/"
         """
 
-        if self.nameSpaceIndex != None:
+        if self.nameSpaceIndex is not None:
             index = self.nameSpaceIndex
         elif nodeId[:3] == "ns=":
             index = nodeId.split("=")[1][0]
@@ -252,11 +276,10 @@ class OPCUAServer(object):
         browseName = f"{index}:{name}"
         parentNode = self.get_node(parentId)
         
-        if value == None:
+        if value is None:
             try:
                 node = parentNode.add_folder(nodeId, browseName)
             except:
-                self.check_connection()
                 node = parentNode.add_folder(nodeId, browseName)
             result = {
                 "name": node.get_display_name().to_string(),
@@ -280,7 +303,7 @@ class OPCUAServer(object):
                 "statusCode": attribute.StatusCode.name
             }
         
-            if writable == True:
+            if writable is True:
                 node.set_writable()
 
         return result
@@ -311,7 +334,8 @@ class OPCUAServer(object):
 
         try:
             results = self.client.uaclient.read(params)
-        except:
+        except socket.timeout:
+            self.logger.info("TIMEOUT!!!")
             self.check_connection()
             results = self.client.uaclient.read(params)
 
@@ -352,5 +376,6 @@ class OPCUAServer(object):
         else:
             raise ValueError("Unsupported datatype")
         return variantType
+
 
 setupServers()

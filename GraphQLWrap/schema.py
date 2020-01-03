@@ -3,8 +3,12 @@ from graphql.language import ast
 
 from opcua import ua
 from opcuautils import getServer, getServers, setupServers
+import descriptions as d
 
-import datetime, asyncio, json, time
+import datetime
+import asyncio
+import json
+import time
 
 useDataloader = True
 if useDataloader:
@@ -13,33 +17,6 @@ if useDataloader:
 
 subscribeVariables = False
 
-# ------------ Field Descriptions ------------
-
-d_name = "Display name"
-d_description = "Node description"
-d_node_class = "Node class"
-d_variable = "Variable that contains value related attribute fields"
-d_path = "Attempts to parse node id for a path to parent node"
-d_node_id = "Node id for of the node on OPC UA server"
-d_sub_nodes = "Returns nodes hierarchically below this node"
-d_variable_sub_nodes = """
-    Recursively find all variable sub nodes.
-    Returns specified fields of found variable nodes.
-    Takes a while to fetch, request this field only if necessary!
-    """
-
-d_value = "Node value"
-d_data_type = "Data type of the value"
-d_source_timestamp = "Source timestamp for the value"
-d_status_code = "Status code for the value quality"
-
-d_server = "Server name (only used in this API). Unique within this API."
-d_end_point_address = "URL to the OPC UA server"
-
-d_parent_id = "Node id of parent node"
-d_writable = "States if node is writable by clients"
-d_recursive = "If operation should be completed recursively"
-d_ok = "True if operation was successful"
 
 class OPCUADataVariable(graphene.types.Scalar):
     """
@@ -52,7 +29,7 @@ class OPCUADataVariable(graphene.types.Scalar):
 
     class Meta():
         description = __doc__
-    
+
     # Serialization for returned values
     @staticmethod
     def serialize(value):
@@ -64,64 +41,63 @@ class OPCUADataVariable(graphene.types.Scalar):
     @staticmethod
     def parse_literal(node):
         value = node.value
-        try:
-            if isinstance(node, ast.StringValue):
-                value = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f")
-            elif "." in value:
-                value = float(value)
-            elif value.isdigit():
-                value = int(value)
-            elif value in ("True", "true"):
-                value = True
-            elif value in ("False", "false"):
-                value = False
-        except:
-            pass
+        if isinstance(node, ast.StringValue):
+            value = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f")
+        elif "." in value:
+            value = float(value)
+        elif value.isdigit():
+            value = int(value)
+        elif value in ("True", "true"):
+            value = True
+        elif value in ("False", "false"):
+            value = False
         return value
 
     @staticmethod
     def parse_value(value):
-        try:
-            if isinstance(value, (datetime.date, datetime.datetime)):
-                value = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f")
-            elif "." in value:
-                value = float(value)
-            elif value.isdigit():
-                value = int(value)
-            elif value in ("True", "true"):
-                value = True
-            elif value in ("False", "false"):
-                value = False
-        except:
-            pass
+        if isinstance(value, (datetime.date, datetime.datetime)):
+            value = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f")
+        elif "." in value:
+            value = float(value)
+        elif value.isdigit():
+            value = int(value)
+        elif value in ("True", "true"):
+            value = True
+        elif value in ("False", "false"):
+            value = False
         return value
+
 
 # ---------------- Query things ----------------
 
+
 class OPCUANode(graphene.ObjectType):
     """
+    Retrieves specified attributes of this node from OPC UA server.
     Represents an OPC UA node with relevant attributes.
 
     API only retrieves the specified attribute fields from the OPC UA server.
     """
 
-    name = graphene.String(description=d_name)
-    description = graphene.String(description=d_description)
-    node_class = graphene.String(description=d_node_class)
-    variable = graphene.Field(lambda: OPCUAVariable, description=d_variable)
-    path = graphene.String(description=d_path)
-    node_id = graphene.String(description=d_node_id)
-    sub_nodes = graphene.List(lambda: OPCUANode, description=d_sub_nodes)
-    variable_sub_nodes = graphene.List(lambda: OPCUANode, description=d_variable_sub_nodes)
-    server = graphene.String(description=d_server)
+    name = graphene.String(description=d.name)
+    description = graphene.String(description=d.description)
+    node_class = graphene.String(description=d.node_class)
+    variable = graphene.Field(lambda: OPCUAVariable, description=d.variable)
+    path = graphene.String(description=d.path)
+    node_id = graphene.String(description=d.node_id)
+    sub_nodes = graphene.List(lambda: OPCUANode, description=d.sub_nodes)
+    variable_sub_nodes = graphene.List(
+        lambda: OPCUANode, description=d.variable_sub_nodes
+    )
+    server = graphene.String(description=d.server)
 
     node = None
     server_object = None
     node_key = None
 
     def set_node(self):
-        if self.node == None:
-            if self.server_object == None:
+        if self.node is None:
+            if self.server_object is None:
                 self.server_object = getServer(self.server)
             self.node = self.server_object.get_node(self.node_id)
             self.node_key = self.server + "/" + self.node_id
@@ -136,49 +112,55 @@ class OPCUANode(graphene.ObjectType):
         self.set_node()
         if useDataloader:
             attributeKey = self.node_key + "/DisplayName"
-            return attribute_loader.load(attributeKey).then(lambda x : x.Value.Value.Text)
+            return attribute_loader.load(attributeKey).then(
+                lambda x: x.Value.Value.Text)
         else:
-            return self.node.get_attribute(ua.AttributeIds.DisplayName).Value.Value.Text
+            return self.node.get_attribute(
+                ua.AttributeIds.DisplayName).Value.Value.Text
 
     def resolve_description(self, info):
         self.set_node()
         if useDataloader:
             attributeKey = self.node_key + "/Description"
-            return attribute_loader.load(attributeKey).then(lambda x : x.Value.Value.Text)
+            return attribute_loader.load(attributeKey).then(
+                lambda x: x.Value.Value.Text)
         else:
-            return self.node.get_attribute(ua.AttributeIds.Description).Value.Value.Text
+            return self.node.get_attribute(
+                ua.AttributeIds.Description).Value.Value.Text
 
     def resolve_node_class(self, info):
         self.set_node()
         if useDataloader:
             attributeKey = self.node_key + "/NodeClass"
-            return attribute_loader.load(attributeKey).then(lambda x : x.Value.Value.name)
+            return attribute_loader.load(attributeKey).then(
+                lambda x: x.Value.Value.name)
         else:
-            return self.node.get_attribute(ua.AttributeIds.NodeClass).Value.Value.name
+            return self.node.get_attribute(
+                ua.AttributeIds.NodeClass).Value.Value.name
 
     def resolve_variable(self, info):
         self.set_node()
 
-        if subscribeVariables == True:
+        if subscribeVariables is True:
             variable = self.server_object.subscriptions.get(self.node_id)
-            if variable != None:
+            if variable is not None:
                 return OPCUAVariable(
                     value=variable.Value.Value,
-                    data_type = variable.Value.VariantType.name,
-                    source_timestamp = variable.SourceTimestamp,
-                    status_code = variable.StatusCode.name
+                    data_type=variable.Value.VariantType.name,
+                    source_timestamp=variable.SourceTimestamp,
+                    status_code=variable.StatusCode.name
                 )
             else:
                 self.server_object.subscribe_variable(self.node_id)
 
         if useDataloader:
             attributeKey = self.node_key + "/Value"
-            return attribute_loader.load(attributeKey).then(lambda x : 
-                OPCUAVariable(
-                    value = x.Value.Value,
-                    data_type = x.Value.VariantType.name,
-                    source_timestamp = x.SourceTimestamp,
-                    status_code = x.StatusCode.name
+            return attribute_loader.load(attributeKey).then(
+                lambda x: OPCUAVariable(
+                    value=x.Value.Value,
+                    data_type=x.Value.VariantType.name,
+                    source_timestamp=x.SourceTimestamp,
+                    status_code=x.StatusCode.name
                 )
             )
 
@@ -186,9 +168,9 @@ class OPCUANode(graphene.ObjectType):
             variable = self.node.get_attribute(ua.AttributeIds.Value)
             return OPCUAVariable(
                 value=variable.Value.Value,
-                data_type = variable.Value.VariantType.name,
-                source_timestamp = variable.SourceTimestamp,
-                status_code = variable.StatusCode.name
+                data_type=variable.Value.VariantType.name,
+                source_timestamp=variable.SourceTimestamp,
+                status_code=variable.StatusCode.name
             )
 
     def resolve_path(self, info):
@@ -207,14 +189,10 @@ class OPCUANode(graphene.ObjectType):
                     node_id=subNode.nodeid.to_string()
                 ))
         return subNodes
-    
+
     def resolve_variable_sub_nodes(self, info):
         self.set_node()
-        try:
-            variableNodes = self.server_object.get_variable_nodes(self.node)
-        except:
-            self.server_object.check_connection()
-            variableNodes = self.server_object.get_variable_nodes(self.node)
+        variableNodes = self.server_object.get_variable_nodes(self.node)
         nodes = []
         for variable in variableNodes:
             node_id = variable.nodeid.to_string()
@@ -227,28 +205,33 @@ class OPCUANode(graphene.ObjectType):
     def resolve_server(self, info):
         return self.server
 
+
 class OPCUAVariable(graphene.ObjectType):
     """
     Represents an OPC UA node DataVariable with relevant attributes
     """
 
-    value = OPCUADataVariable(description=d_value)
-    data_type = graphene.String(description=d_data_type)
-    source_timestamp = graphene.types.datetime.DateTime(description=d_source_timestamp)
-    status_code = graphene.String(description=d_status_code)
+    value = OPCUADataVariable(description=d.value)
+    data_type = graphene.String(description=d.data_type)
+    source_timestamp = graphene.types.datetime.DateTime(
+        description=d.source_timestamp
+    )
+    status_code = graphene.String(description=d.status_code)
+
 
 class OPCUAServer(graphene.ObjectType):
     """
     Information on configured OPC UA servers for this API.
     """
 
-    name = graphene.String(description=d_server)
-    end_point_address = graphene.String(description=d_end_point_address)
+    name = graphene.String(description=d.server)
+    end_point_address = graphene.String(description=d.end_point_address)
     subscriptions = graphene.List(graphene.String)
 
     def resolve_subscriptions(self, info):
         server = getServer(self.name)
         return server.subscriptions.keys()
+
 
 class Query(graphene.ObjectType):
     """
@@ -258,14 +241,14 @@ class Query(graphene.ObjectType):
     # Query options
     node = graphene.Field(
         OPCUANode,
-        server=graphene.String(required=True, description=d_server),
-        node_id=graphene.String(required=True, description=d_node_id),
-        description="Get attributes of an OPC UA node in addition to some potentially helpful fields"
+        server=graphene.String(required=True, description=d.server),
+        node_id=graphene.String(required=True, description=d.node_id),
+        description=OPCUANode.__doc__
     )
 
     servers = graphene.List(
         OPCUAServer,
-        description="Get configured servers' info"
+        description=OPCUAServer.__doc__
     )
 
     def resolve_node(self, info, server, node_id):
@@ -293,7 +276,9 @@ class Query(graphene.ObjectType):
 
         return result
 
+
 # ---------------- Mutate things ----------------
+
 
 class SetNodeValue(graphene.Mutation):
     """
@@ -303,21 +288,22 @@ class SetNodeValue(graphene.Mutation):
     Including correct dataType for the target value speeds up
     """
 
-    ok = graphene.Boolean(description=d_ok)
-    writeTime = graphene.Int(description="Time it took to write the value to the OPC UA server from the GraphQL API server")
+    ok = graphene.Boolean(description=d.ok)
+    writeTime = graphene.Int(description=d.writeTime)
 
     class Arguments:
-        server = graphene.String(required=True, description=d_server)
-        node_id = graphene.String(required=True, description=d_node_id)
-        value = OPCUADataVariable(required=True, description=d_value)
-        dataType = graphene.String(description=d_data_type)
-    
+        server = graphene.String(required=True, description=d.server)
+        node_id = graphene.String(required=True, description=d.node_id)
+        value = OPCUADataVariable(required=True, description=d.value)
+        dataType = graphene.String(description=d.data_type)
+
     def mutate(self, info, server, node_id, value, dataType=None):
         start = time.time()
         server = getServer(server)
         ok = server.set_node_attribute(node_id, "Value", value, dataType)
         writeTime = int((time.time() - start)*1000)
-        return SetNodeValue(ok = ok, writeTime = writeTime)
+        return SetNodeValue(ok=ok, writeTime=writeTime)
+
 
 class SetNodeDescription(graphene.Mutation):
     """
@@ -327,19 +313,23 @@ class SetNodeDescription(graphene.Mutation):
     Description must be a string.
     """
 
-    description = graphene.String(description=d_description)
-    ok = graphene.Boolean(description=d_ok)
+    description = graphene.String(description=d.description)
+    ok = graphene.Boolean(description=d.ok)
 
     class Arguments:
-        server = graphene.String(required=True, description=d_server)
-        node_id = graphene.String(required=True, description=d_node_id)
-        description = OPCUADataVariable(required=True, description=d_description)
+        server = graphene.String(required=True, description=d.server)
+        node_id = graphene.String(required=True, description=d.node_id)
+        description = OPCUADataVariable(
+            required=True,
+            description=d.description
+        )
 
     def mutate(self, info, server, node_id, description):
 
         server = getServer(server)
         ok = server.set_node_attribute(node_id, "Description", description)
-        return SetNodeDescription(ok = ok)
+        return SetNodeDescription(ok=ok)
+
 
 class AddNode(graphene.Mutation):
     """
@@ -354,26 +344,29 @@ class AddNode(graphene.Mutation):
     """
 
     class Arguments:
-        server = graphene.String(required=True, description=d_server)
-        name = graphene.String(required=True, description=d_name)
-        node_id = graphene.String(required=True, description=d_node_id)
-        parent_id = graphene.String(required=True, description=d_parent_id)
-        value = OPCUADataVariable(required=False, description=d_value)
-        writable = graphene.Boolean(required=False, description=d_writable)
+        server = graphene.String(required=True, description=d.server)
+        name = graphene.String(required=True, description=d.name)
+        node_id = graphene.String(required=True, description=d.node_id)
+        parent_id = graphene.String(required=True, description=d.parent_id)
+        value = OPCUADataVariable(required=False, description=d.value)
+        writable = graphene.Boolean(required=False, description=d.writable)
 
-    name = graphene.String(description=d_name)
-    variable = graphene.Field(lambda: OPCUAVariable, description=d_variable)
-    node_id = graphene.String(description=d_node_id)
-    server = graphene.String(description=d_server)
-    writable = graphene.Boolean(description=d_writable)
-    ok = graphene.Boolean(description=d_ok)
+    name = graphene.String(description=d.name)
+    variable = graphene.Field(lambda: OPCUAVariable, description=d.variable)
+    node_id = graphene.String(description=d.node_id)
+    server = graphene.String(description=d.server)
+    writable = graphene.Boolean(description=d.writable)
+    ok = graphene.Boolean(description=d.ok)
 
-    def mutate(self, info, server, name, node_id, parent_id, value=None, writable=True):
+    def mutate(
+        self, info, server, name, node_id, parent_id,
+        value=None, writable=True
+    ):
 
         server = getServer(server)
         result = server.add_node(name, node_id, parent_id, value, writable)
 
-        if result.get("value") != None:
+        if result.get("value") is not None:
             variable = OPCUAVariable(
                 value=result.get("value"),
                 data_type=result.get("dataType"),
@@ -392,6 +385,7 @@ class AddNode(graphene.Mutation):
             ok=True
         )
 
+
 class DeleteNode(graphene.Mutation):
     """
     Deletes node from OPC UA address space.
@@ -403,12 +397,12 @@ class DeleteNode(graphene.Mutation):
     """
 
     class Arguments:
-        server = graphene.String(required=True, description=d_server)
-        node_id = graphene.String(required=True, description=d_node_id)
-        recursive = graphene.Boolean(required=False, description=d_recursive)
+        server = graphene.String(required=True, description=d.server)
+        node_id = graphene.String(required=True, description=d.node_id)
+        recursive = graphene.Boolean(required=False, description=d.recursive)
 
-    ok = graphene.Boolean(description=d_ok)
-    
+    ok = graphene.Boolean(description=d.ok)
+
     def mutate(self, info, server, node_id, recursive=True):
 
         server = getServer(server)
@@ -416,13 +410,16 @@ class DeleteNode(graphene.Mutation):
         try:
             server.get_node(node_id)
             ok = False
-        except:
+        except Exception as e:
+            print(type(e).__name__)
+            print(str(e))
             ok = True
 
-        if ok == False:
+        if ok is False:
             raise Warning("Could not delete node. Perhaps no access rights?")
 
         return DeleteNode(ok=ok)
+
 
 class AddServer(graphene.Mutation):
     """
@@ -430,12 +427,15 @@ class AddServer(graphene.Mutation):
     """
 
     class Arguments:
-        name = graphene.String(required=True, description=d_server)
-        endPointAddress = graphene.String(required=True, description=d_end_point_address)
+        name = graphene.String(required=True, description=d.server)
+        endPointAddress = graphene.String(
+            required=True,
+            description=d.end_point_address
+        )
 
-    name = graphene.String(description=d_server)
-    end_point_address = graphene.String(description=d_end_point_address)
-    ok = graphene.Boolean(description=d_ok)
+    name = graphene.String(description=d.server)
+    end_point_address = graphene.String(description=d.end_point_address)
+    ok = graphene.Boolean(description=d.ok)
 
     def mutate(self, info, name, endPointAddress):
 
@@ -445,11 +445,15 @@ class AddServer(graphene.Mutation):
         for server in servers:
             if server.name == name:
                 serverExists = True
-            
+
         if serverExists:
             raise ValueError("Server with that name is already configured")
 
-        with open(os.path.join(os.getcwd(), os.path.dirname(__file__), "servers.json"), "r+") as serversFile:
+        with open(os.path.join(
+            os.getcwd(),
+            os.path.dirname(__file__),
+            "servers.json"
+        ), "r+") as serversFile:
             servers = json.load(serversFile)
             servers["servers"].append({
                 "name": name,
@@ -459,14 +463,15 @@ class AddServer(graphene.Mutation):
             json.dump(servers, serversFile, indent=4)
             serversFile.truncate()
             ok = True
-        
+
         setupServers()
-        
+
         return AddServer(
             name=name,
             end_point_address=endPointAddress,
             ok=ok
         )
+
 
 class DeleteServer(graphene.Mutation):
     """
@@ -474,15 +479,19 @@ class DeleteServer(graphene.Mutation):
     """
 
     class Arguments:
-        name = graphene.String(required=True, description=d_server)
+        name = graphene.String(required=True, description=d.server)
 
-    ok = graphene.Boolean(description=d_ok)
+    ok = graphene.Boolean(description=d.ok)
 
     def mutate(self, info, name):
-        
+
         ok = False
         server = getServer(name)
-        with open(os.path.join(os.getcwd(), os.path.dirname(__file__), "servers.json"), "r+") as serversFile:
+        with open(os.path.join(
+            os.getcwd(),
+            os.path.dirname(__file__),
+            "servers.json"
+        ), "r+") as serversFile:
             servers = json.load(serversFile)
             i = 0
             for server in servers["servers"]:
@@ -494,27 +503,31 @@ class DeleteServer(graphene.Mutation):
             serversFile.seek(0)
             json.dump(servers, serversFile, indent=4)
             serversFile.truncate()
-        
+
         setupServers()
         return AddServer(ok=ok)
 
+
 class ClearServerSubscriptions(graphene.Mutation):
     """
-    Clear automatically created subscriptions between the GraphQL API and OPC UA server.
+    Clear automatically created subscriptions
+    between the GraphQL API and OPC UA server.
     """
 
     class Arguments:
-        name = graphene.String(required=True, description=d_server)
+        name = graphene.String(required=True, description=d.server)
 
-    ok = graphene.Boolean(description=d_ok)
+    ok = graphene.Boolean(description=d.ok)
 
     def mutate(self, info, name):
-        
+
         ok = False
         server = getServer(name)
         try:
             server.sub.delete()
-        except:
+        except Exception as e:
+            print(type(e).__name__)
+            print(str(e))
             pass
         server.sub = None
         server.subscriptions.clear()
@@ -522,18 +535,26 @@ class ClearServerSubscriptions(graphene.Mutation):
 
         return ClearServerSubscriptions(ok=ok)
 
+
 class Mutation(graphene.ObjectType):
     """ Queries for modifying data on OPC UA server """
 
     set_value = SetNodeValue.Field(description=SetNodeValue.__doc__)
-    set_description = SetNodeDescription.Field(description=SetNodeDescription.__doc__)
+    set_description = SetNodeDescription.Field(
+        description=SetNodeDescription.__doc__
+    )
     add_node = AddNode.Field(description=AddNode.__doc__)
     delete_node = DeleteNode.Field(description=DeleteNode.__doc__)
     add_server = AddServer.Field(description=AddServer.__doc__)
     delete_server = DeleteServer.Field(description=DeleteServer.__doc__)
-    clear_server_subcriptions = ClearServerSubscriptions.Field(description=ClearServerSubscriptions.__doc__)
+    clear_server_subcriptions = ClearServerSubscriptions.Field(
+        description=ClearServerSubscriptions.__doc__
+    )
+
 
 # --------------- Subscribe things ---------------
+
+
 """
 Subscriptions do not work before some changes are made to
 the graphene subscriptions library.
@@ -542,14 +563,14 @@ the graphene subscriptions library.
     Simple GraphQL subscription.
 
     # Subscription payload.
-    #server = graphene.String(description=d_server)
-    node_id = graphene.String(description=d_node_id)
-    variable = graphene.Field(lambda: OPCUAVariable, description=d_variable)
+    #server = graphene.String(description=d.server)
+    node_id = graphene.String(description=d.node_id)
+    variable = graphene.Field(lambda: OPCUAVariable, description=d.variable)
 
     class Arguments:
         That is how subscription arguments are defined.
-        server = graphene.String(required=True, description=d_server)
-        node_id = graphene.String(required=True, description=d_node_id)
+        server = graphene.String(required=True, description=d.server)
+        node_id = graphene.String(required=True, description=d.node_id)
 
     @staticmethod
     def subscribe(self, info, server, node_id):
@@ -584,7 +605,7 @@ the graphene subscriptions library.
                 status_code=variable.StatusCode.name
             )
         )
-    
+
     @classmethod
     def datachange_notification(self, node, variable, data):
         pass
@@ -615,5 +636,5 @@ class Subscription(graphene.ObjectType):
 schema = graphene.Schema(
     query=Query,
     mutation=Mutation,
-    #subscription=Subscription,
+    # subscription=Subscription,
 )

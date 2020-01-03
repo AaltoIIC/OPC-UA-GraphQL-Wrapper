@@ -4,6 +4,7 @@ from opcua import ua
 from opcuautils import getServer
 from collections import defaultdict
 
+
 class AttributeLoader(DataLoader):
 
     def batch_load_fn(self, attributeKeys):
@@ -42,9 +43,9 @@ class AttributeLoader(DataLoader):
                     rv.NodeId = ua.NodeId.from_string(info[1])
                 rv.AttributeId = ua.AttributeIds[info[2]]
                 params.NodesToRead.append(rv)
-            
+
             results = server.read(params)
-            
+
             i = 0
             for info in attributes:
                 sortedResults[info[0]] = results[i]
