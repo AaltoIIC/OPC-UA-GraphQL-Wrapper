@@ -89,7 +89,9 @@ class OPCUAServer(object):
 
         if self.client.uaclient._uasocket is None:
             self.connect()
-        elif not self.client.uaclient._uasocket._thread.isAlive():
+        elif self.client.uaclient._uasocket._thread is None:
+            self.connect()
+        elif not self.client.uaclient._uasocket._thread.is_alive():
             self.connect()
 
     def connect(self):
@@ -323,7 +325,24 @@ class OPCUAServer(object):
 
         self.check_connection()
         node = self.get_node(nodeId)
-        return self.client.delete_nodes([node], recursive)
+        self.client.delete_nodes([node], recursive)
+        try:
+            params = ua.ReadParameters()
+            rv = ua.ReadValueId()
+            rv.NodeId = ua.NodeId.from_string(node_id)
+            rv.AttributeId = ua.AttributeIds.DisplayName
+            params.NodesToRead.append(rv)
+            server.read(params)
+            ok = False
+        except Exception as e:
+            print(e)
+            ok = True
+
+        if ok is False:
+            # TODO Always gives this message..
+            raise Warning("Could not delete node. Perhaps no access rights?")
+
+        return ok
 
     def read(self, params):
         """

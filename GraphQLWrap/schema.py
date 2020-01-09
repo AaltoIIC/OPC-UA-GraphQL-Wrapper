@@ -1,10 +1,12 @@
 import graphene
 from graphql.language import ast
+from graphql import GraphQLError
 
 from opcua import ua
 from opcuautils import getServer, getServers, setupServers
 import descriptions as d
 
+import os
 import datetime
 import asyncio
 import json
@@ -406,18 +408,7 @@ class DeleteNode(graphene.Mutation):
     def mutate(self, info, server, node_id, recursive=True):
 
         server = getServer(server)
-        server.delete_node(node_id, recursive)
-        try:
-            server.get_node(node_id)
-            ok = False
-        except Exception as e:
-            print(type(e).__name__)
-            print(str(e))
-            ok = True
-
-        if ok is False:
-            raise Warning("Could not delete node. Perhaps no access rights?")
-
+        ok = server.delete_node(node_id, recursive)
         return DeleteNode(ok=ok)
 
 
@@ -447,7 +438,7 @@ class AddServer(graphene.Mutation):
                 serverExists = True
 
         if serverExists:
-            raise ValueError("Server with that name is already configured")
+            raise GraphQLError("Server with that name is already configured")
 
         with open(os.path.join(
             os.getcwd(),
@@ -467,8 +458,6 @@ class AddServer(graphene.Mutation):
         setupServers()
 
         return AddServer(
-            name=name,
-            end_point_address=endPointAddress,
             ok=ok
         )
 
