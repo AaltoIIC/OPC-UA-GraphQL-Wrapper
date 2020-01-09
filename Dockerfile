@@ -7,7 +7,5 @@ ADD requirements.txt /app
 
 RUN pip install -r requirements.txt
 
-EXPOSE 8000
-
-CMD ["gunicorn", "-k uvicorn.workers.UvicornWorker", "main:app"]
+CMD ["gunicorn", "-w 1", "-k uvicorn.workers.UvicornH11Worker", "-b :8000", "main:app"]
 
