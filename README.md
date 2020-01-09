@@ -225,3 +225,28 @@ Ensure that you're connected to the same network as the Raspberry Pi.
 ```
 $ ./redeployToRaspPi.sh
 ```
+
+### Docker
+This guide assumes that you already have docker installed.
+Guide on Docker installation can be found for [Raspberry Pi](https://dev.to/rohansawant/installing-docker-and-docker-compose-on-the-raspberry-pi-in-5-simple-steps-3mgl).
+For Windows, the docker install file can be downloaded from [Here](https://docs.docker.com/docker-for-windows/release-notes/). Older versions seem to be possible to download without login.
+
+Navigate to the project folder where the Dockerfile can be found with Windows CMD or Bash on Raspbian.
+
+Build the docker image with:
+```
+docker build -t opcqlwrapper .
+```
+
+Run a docker container of the image with:
+```
+docker run -p 80:8000 --name opcqlwrapper opcqlwrapper
+```
+The server can be now accessed either locally at address:
+```
+http://localhost/
+```
+or remotely from the host devices ip address such as:
+```
+http://192.168.0.XX/
+```
