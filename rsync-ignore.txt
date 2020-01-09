@@ -5,7 +5,6 @@ linenv
 .gitignore
 .git
 Tests
-Dockerfile
 rsync-ignore.txt
 README.md
 LICENSE
