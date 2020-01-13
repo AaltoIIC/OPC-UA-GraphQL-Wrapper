@@ -9,6 +9,7 @@ import datetime
 import json
 import logging
 import socket
+import time
 
 # List that will contain all OPCUAServer objects
 serverList = []
@@ -271,8 +272,11 @@ class OPCUAServer(object):
         params = ua.WriteParameters()
         params.NodesToWrite.append(attr)
 
-        result = self.write(params)
-        return result[0].is_good()
+        result, writeTime = self.write(params)
+        if attribute == "Value":
+            return result[0].is_good(), writeTime
+        else:
+            return result[0].is_good()
 
     def add_node(self, name, nodeId, parentId, value=None, writable=True):
         """
@@ -348,19 +352,29 @@ class OPCUAServer(object):
         """
         Reads from OPC UA server
         params == ua.ReadParameters() that are properly set up.
+
+        Returns result object and time it took to read from OPC UA server.
         """
 
         self.check_connection()
-        return self.client.uaclient.read(params)
+        start = time.time_ns()
+        result = self.client.uaclient.read(params)
+        readTime = time.time_ns() - start
+        return result, readTime
 
     def write(self, params):
         """
         Writes to OPC UA server
         params == ua.WriteParameters() that are properly set up.
+
+        Returns result object and time it took to read from OPC UA server.
         """
 
         self.check_connection()
-        return self.client.uaclient.write(params)
+        start = time.time_ns()
+        result = self.client.uaclient.write(params)
+        writeTime = time.time_ns() - start
+        return result, writeTime
 
     def variant_type_finder(self, value, nodeId):
         """

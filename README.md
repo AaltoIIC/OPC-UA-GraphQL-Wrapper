@@ -192,11 +192,11 @@ mutation {
 <a name="running-the-api-locally"></a>
 ### Running the API locally as development server
 
-From the cloned project root folder run the command:
+From the cloned project's [GraphQLWrap](https://github.com/AaltoIIC/OPC-UA-GraphQL-Wrapper/tree/master/GraphQLWrap) folder run the command:
 
 (Within virtualenv, if used)
 ```
-uvicorn main:app --reload
+uvicorn main:app --reload --port 8000
 ```
 Application index is now available at localhost via port 8000. On the index page you can find an OPC UA server browser that can be used to familiarize yourself with the OPC UA server node structures.
 ```

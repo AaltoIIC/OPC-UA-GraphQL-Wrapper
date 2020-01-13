@@ -44,11 +44,11 @@ class AttributeLoader(DataLoader):
                 rv.AttributeId = ua.AttributeIds[info[2]]
                 params.NodesToRead.append(rv)
 
-            results = server.read(params)
+            results, latency = server.read(params)
 
             i = 0
             for info in attributes:
-                sortedResults[info[0]] = results[i]
+                sortedResults[info[0]] = [results[i], latency]
                 i += 1
 
         return Promise.resolve(sortedResults)

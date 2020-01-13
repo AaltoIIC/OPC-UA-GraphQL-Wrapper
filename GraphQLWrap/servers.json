@@ -12,11 +12,11 @@
         },
         {
             "name": "TestServerAdmin",
-            "endPointAddress": "opc.tcp://admin@localhost:4840/freeopcua/server/"
+            "endPointAddress": "opc.tcp://admin@localhost:4840/testserver"
         },
         {
             "name": "TestServer",
-            "endPointAddress": "opc.tcp://localhost:4840/freeopcua/server/"
+            "endPointAddress": "opc.tcp://localhost:4840/testserver"
         }
     ]
 }

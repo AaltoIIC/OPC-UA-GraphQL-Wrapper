@@ -10,7 +10,6 @@ import os
 import datetime
 import asyncio
 import json
-import time
 
 useDataloader = True
 if useDataloader:
@@ -115,7 +114,7 @@ class OPCUANode(graphene.ObjectType):
         if useDataloader:
             attributeKey = self.node_key + "/DisplayName"
             return attribute_loader.load(attributeKey).then(
-                lambda x: x.Value.Value.Text)
+                lambda x: x[0].Value.Value.Text)
         else:
             return self.node.get_attribute(
                 ua.AttributeIds.DisplayName).Value.Value.Text
@@ -125,7 +124,7 @@ class OPCUANode(graphene.ObjectType):
         if useDataloader:
             attributeKey = self.node_key + "/Description"
             return attribute_loader.load(attributeKey).then(
-                lambda x: x.Value.Value.Text)
+                lambda x: x[0].Value.Value.Text)
         else:
             return self.node.get_attribute(
                 ua.AttributeIds.Description).Value.Value.Text
@@ -135,7 +134,7 @@ class OPCUANode(graphene.ObjectType):
         if useDataloader:
             attributeKey = self.node_key + "/NodeClass"
             return attribute_loader.load(attributeKey).then(
-                lambda x: x.Value.Value.name)
+                lambda x: x[0].Value.Value.name)
         else:
             return self.node.get_attribute(
                 ua.AttributeIds.NodeClass).Value.Value.name
@@ -159,10 +158,11 @@ class OPCUANode(graphene.ObjectType):
             attributeKey = self.node_key + "/Value"
             return attribute_loader.load(attributeKey).then(
                 lambda x: OPCUAVariable(
-                    value=x.Value.Value,
-                    data_type=x.Value.VariantType.name,
-                    source_timestamp=x.SourceTimestamp,
-                    status_code=x.StatusCode.name
+                    value=x[0].Value.Value,
+                    data_type=x[0].Value.VariantType.name,
+                    source_timestamp=x[0].SourceTimestamp,
+                    status_code=x[0].StatusCode.name,
+                    read_time=x[1]
                 )
             )
 
@@ -219,6 +219,7 @@ class OPCUAVariable(graphene.ObjectType):
         description=d.source_timestamp
     )
     status_code = graphene.String(description=d.status_code)
+    read_time = graphene.Int(description=d.read_time)
 
 
 class OPCUAServer(graphene.ObjectType):
@@ -291,7 +292,7 @@ class SetNodeValue(graphene.Mutation):
     """
 
     ok = graphene.Boolean(description=d.ok)
-    writeTime = graphene.Int(description=d.writeTime)
+    writeTime = graphene.Int(description=d.write_time)
 
     class Arguments:
         server = graphene.String(required=True, description=d.server)
@@ -300,10 +301,10 @@ class SetNodeValue(graphene.Mutation):
         dataType = graphene.String(description=d.data_type)
 
     def mutate(self, info, server, node_id, value, dataType=None):
-        start = time.time()
         server = getServer(server)
-        ok = server.set_node_attribute(node_id, "Value", value, dataType)
-        writeTime = int((time.time() - start)*1000)
+        ok, writeTime = server.set_node_attribute(
+            node_id, "Value", value, dataType
+        )
         return SetNodeValue(ok=ok, writeTime=writeTime)
 
 
