@@ -2,7 +2,7 @@ import requests
 import time
 from datetime import datetime
 from string import Template
-from opcua import Client
+from opcua import Client, ua
 
 tests = [1, 5, 25, 100]
 queriesPerTest = 10
@@ -53,10 +53,10 @@ def write_query_gen(n):
     query = "mutation { "
     for i in range(1, n + 1):
         node = "vn" + str(i) \
-            + ': node(server: "PrfTestServer", nodeId: "ns=2;i=' \
-            + str(i + 1)
+            + ': setValue(server: "PrfTestServer", nodeId: "ns=2;i=' \
+            + str(i + 1) \
             + '", value: ' \
-            + i + ') { writeTime }'
+            + str(i) + ') { writeTime }'
         query = query + node
     query = query + "}"
     return query
@@ -141,10 +141,10 @@ def read_node_variable_opcua(session, n):
     for i in range(1, n + 1):
         rv = ua.ReadValueId()
         rv.NodeId = ua.NodeId.from_string("ns=2;i=" + str(i + 1))
-        rv.AttributeId = ua.AttributeIds[Value]
+        rv.AttributeId = ua.AttributeIds.Value
         params.NodesToRead.append(rv)
     start = time.time_ns()
-    session.read(params)
+    session.uaclient.read(params)
     latency = round((time.time_ns() - start) / 1000000)
     return latency
 
@@ -154,15 +154,17 @@ def write_node_variable_opcua(session, n):
     for i in range(1, n + 1):
         rv = ua.WriteValue()
         rv.NodeId = ua.NodeId.from_string("ns=2;i=" + str(i + 1))
-        rv.AttributeId = ua.AttributeIds[Value]
-        params.NodesToRead.append(rv)
+        rv.AttributeId = ua.AttributeIds.Value
+        variantType = ua.VariantType[dataType]
+        rv.Value = ua.DataValue(ua.Variant(value, variantType))
+        params.NodesToWrite.append(rv)
     start = time.time_ns()
-    session.read(params)
+    session.uaclient.read(params)
     latency = round((time.time_ns() - start) / 1000000)
     return latency
 
 
-with Client(OPC_UA_Endpoint) as session:
+""" with Client(OPC_UA_Endpoint) as session:
 
     # OPC UA read tests
     tot = 0
@@ -179,3 +181,4 @@ with Client(OPC_UA_Endpoint) as session:
         print("Write " + str(test) + " latency: " + str(latency))
         tot += latency
     print("Write " + str(test) + " average latency: " + str(tot))
+ """
