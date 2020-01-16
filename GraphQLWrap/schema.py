@@ -109,37 +109,37 @@ class OPCUANode(graphene.ObjectType):
     fields are fetched from the OPC UA server
     """
     @staticmethod
-    def resolve_name(self, info):
+    async def resolve_name(self, info):
         self.set_node()
         if useDataloader:
             attributeKey = self.node_key + "/DisplayName"
-            return attribute_loader.load(attributeKey).then(
-                lambda x: x[0].Value.Value.Text)
+            x = await attribute_loader.load(attributeKey)
+            return x[0].Value.Value.Text
         else:
             return self.node.get_attribute(
                 ua.AttributeIds.DisplayName).Value.Value.Text
 
-    def resolve_description(self, info):
+    async def resolve_description(self, info):
         self.set_node()
         if useDataloader:
             attributeKey = self.node_key + "/Description"
-            return attribute_loader.load(attributeKey).then(
-                lambda x: x[0].Value.Value.Text)
+            x = await attribute_loader.load(attributeKey)
+            return x[0].Value.Value.Text
         else:
             return self.node.get_attribute(
                 ua.AttributeIds.Description).Value.Value.Text
 
-    def resolve_node_class(self, info):
+    async def resolve_node_class(self, info):
         self.set_node()
         if useDataloader:
             attributeKey = self.node_key + "/NodeClass"
-            return attribute_loader.load(attributeKey).then(
-                lambda x: x[0].Value.Value.name)
+            x = await attribute_loader.load(attributeKey)
+            return x[0].Value.Value.name
         else:
             return self.node.get_attribute(
                 ua.AttributeIds.NodeClass).Value.Value.name
 
-    def resolve_variable(self, info):
+    async def resolve_variable(self, info):
         self.set_node()
 
         if subscribeVariables is True:
@@ -156,23 +156,26 @@ class OPCUANode(graphene.ObjectType):
 
         if useDataloader:
             attributeKey = self.node_key + "/Value"
-            return attribute_loader.load(attributeKey).then(
-                lambda x: OPCUAVariable(
-                    value=x[0].Value.Value,
-                    data_type=x[0].Value.VariantType.name,
-                    source_timestamp=x[0].SourceTimestamp,
-                    status_code=x[0].StatusCode.name,
-                    read_time=x[1]
-                )
+            x = await attribute_loader.load(attributeKey)
+            return OPCUAVariable(
+                value=x[0].Value.Value,
+                data_type=x[0].Value.VariantType.name,
+                source_timestamp=x[0].SourceTimestamp,
+                status_code=x[0].StatusCode.name,
+                read_time=x[1]
             )
 
         else:
-            variable = self.node.get_attribute(ua.AttributeIds.Value)
+            variable, readTime = await self.server_object.read_node_attribute(
+                self.node_id,
+                "Value"
+            )
             return OPCUAVariable(
                 value=variable.Value.Value,
                 data_type=variable.Value.VariantType.name,
                 source_timestamp=variable.SourceTimestamp,
-                status_code=variable.StatusCode.name
+                status_code=variable.StatusCode.name,
+                read_time=readTime
             )
 
     def resolve_path(self, info):
@@ -300,9 +303,9 @@ class SetNodeValue(graphene.Mutation):
         value = OPCUADataVariable(required=True, description=d.value)
         dataType = graphene.String(description=d.data_type)
 
-    def mutate(self, info, server, node_id, value, dataType=None):
+    async def mutate(self, info, server, node_id, value, dataType=None):
         server = getServer(server)
-        ok, writeTime = server.set_node_attribute(
+        ok, writeTime = await server.set_node_attribute(
             node_id, "Value", value, dataType
         )
         return SetNodeValue(ok=ok, writeTime=writeTime)

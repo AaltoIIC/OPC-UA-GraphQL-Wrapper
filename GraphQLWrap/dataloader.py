@@ -1,5 +1,6 @@
-from promise import Promise
-from promise.dataloader import DataLoader
+from aiodataloader import DataLoader
+import asyncio
+
 from opcua import ua
 from opcuautils import getServer
 from collections import defaultdict
@@ -7,7 +8,7 @@ from collections import defaultdict
 
 class AttributeLoader(DataLoader):
 
-    def batch_load_fn(self, attributeKeys):
+    async def batch_load_fn(self, attributeKeys):
         """
         Iterates through the attributeKeys and retrieves data
         from OPC UA servers based on the attributeKey values.
@@ -44,11 +45,11 @@ class AttributeLoader(DataLoader):
                 rv.AttributeId = ua.AttributeIds[info[2]]
                 params.NodesToRead.append(rv)
 
-            results, latency = server.read(params)
+            results, latency = await server.read(params)
 
             i = 0
             for info in attributes:
                 sortedResults[info[0]] = [results[i], latency]
                 i += 1
 
-        return Promise.resolve(sortedResults)
+        return sortedResults

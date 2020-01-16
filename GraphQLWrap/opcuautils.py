@@ -10,6 +10,7 @@ import json
 import logging
 import socket
 import time
+import asyncio
 
 # List that will contain all OPCUAServer objects
 serverList = []
@@ -80,7 +81,7 @@ class OPCUAServer(object):
         self.subscriptions = {}
         # ----------------------------
 
-    def check_connection(self):
+    async def check_connection(self):
         """
         Check if a connection has been established before
         or if connection thread is running.
@@ -234,7 +235,38 @@ class OPCUAServer(object):
 
         self.subscriptions[node.nodeid.to_string()] = data.monitored_item.Value
 
-    def set_node_attribute(self, nodeId, attribute, value, dataType=None):
+    async def read_node_attribute(self, nodeId, attribute):
+        """
+        Read node attribute based on given arguments.
+        Giving correct dataType for value and node speeds
+        up the write operation.
+
+        Arguments                               Example
+        nodeId:     Target nodeId               "ns=2;i=2"
+        attribute:  Target attribute of node    "Value"
+
+        Results
+        OPCUAVar:   OPC UA variable object      <object>
+        readTime:   Time taken for read (ns)    12345678
+        """
+
+        rv = ua.ReadValueId()
+        if nodeId == "":
+            rv.NodeId = ua.NodeId.from_string(server.rootNodeId)
+        else:
+            rv.NodeId = ua.NodeId.from_string(nodeId)
+        rv.AttributeId = ua.AttributeIds[attribute]
+
+        params = ua.ReadParameters()
+        params.NodesToRead.append(rv)
+
+        result, readTime = await self.read(params)
+        if attribute == "Value":
+            return result[0], readTime
+        else:
+            return result[0]
+
+    async def set_node_attribute(self, nodeId, attribute, value, dataType=None):
         """
         Sets node attribute based on given arguments.
         Giving correct dataType for value and node speeds
@@ -248,6 +280,7 @@ class OPCUAServer(object):
 
         Results
         boolean:    Indicates success           True
+        writeTime:  Time taken for write (ns)   12345678
         """
 
         attr = ua.WriteValue()
@@ -272,7 +305,7 @@ class OPCUAServer(object):
         params = ua.WriteParameters()
         params.NodesToWrite.append(attr)
 
-        result, writeTime = self.write(params)
+        result, writeTime = await self.write(params)
         if attribute == "Value":
             return result[0].is_good(), writeTime
         else:
@@ -348,7 +381,7 @@ class OPCUAServer(object):
 
         return ok
 
-    def read(self, params):
+    async def read(self, params):
         """
         Reads from OPC UA server
         params == ua.ReadParameters() that are properly set up.
@@ -356,13 +389,13 @@ class OPCUAServer(object):
         Returns result object and time it took to read from OPC UA server.
         """
 
-        self.check_connection()
+        await self.check_connection()
         start = time.time_ns()
         result = self.client.uaclient.read(params)
         readTime = time.time_ns() - start
         return result, readTime
 
-    def write(self, params):
+    async def write(self, params):
         """
         Writes to OPC UA server
         params == ua.WriteParameters() that are properly set up.
@@ -370,7 +403,7 @@ class OPCUAServer(object):
         Returns result object and time it took to read from OPC UA server.
         """
 
-        self.check_connection()
+        await self.check_connection()
         start = time.time_ns()
         result = self.client.uaclient.write(params)
         writeTime = time.time_ns() - start
