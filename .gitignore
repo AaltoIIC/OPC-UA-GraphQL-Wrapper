@@ -3,5 +3,7 @@ __pycache__/
 .vscode
 venv
 winenv
+Tests/winenv
 linenv
 opcqlwrapper.tar
+*.csv

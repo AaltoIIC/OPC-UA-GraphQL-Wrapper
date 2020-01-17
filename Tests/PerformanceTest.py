@@ -4,10 +4,13 @@ from datetime import datetime
 from string import Template
 from opcua import Client, ua
 
-tests = [1, 5, 25, 100]
-queriesPerTest = 10
+tests = [1, 5, 25]  # Nodes per query
+queriesPerTest = 50  # Queries per test
 
-GraphQL_API_URL = "http://127.0.0.1:8000/graphql/"
+""" GraphQL_API_URL = "http://192.168.0.31:8000/graphql/"
+OPC_UA_Endpoint = "opc.tcp://192.168.0.32:4840/testserver/" """
+
+GraphQL_API_URL = "http://localhost:8000/graphql/"
 OPC_UA_Endpoint = "opc.tcp://localhost:4840/testserver/"
 
 queryAddServer = Template("""
@@ -20,6 +23,18 @@ queryDeleteServer = Template("""
         deleteServer(name: "$name") {ok}
     }
 """)
+
+
+def fast_query_gen(n):
+    # n = n*2
+    query = "query { "
+    for i in range(1, n + 1):
+        node = "vn" + str(i) \
+            + ': node(server: "PrfTestServer", nodeId: "ns=2;i=' \
+            + str(i + 1) + '") { nodeId }'
+        query = query + node
+    query = query + "}"
+    return query
 
 
 def read_query_gen(n):
@@ -38,7 +53,8 @@ def read_query_gen(n):
         node = "vn" + str(i) \
             + ': node(server: "PrfTestServer", nodeId: "ns=2;i=' \
             + str(i + 1) + '") {' \
-            + """variable {
+            + """
+                variable {
                     value
                     dataType
                     sourceTimestamp
@@ -49,6 +65,7 @@ def read_query_gen(n):
     query = query + "}"
     return query
 
+
 def write_query_gen(n):
     query = "mutation { "
     for i in range(1, n + 1):
@@ -56,13 +73,22 @@ def write_query_gen(n):
             + ': setValue(server: "PrfTestServer", nodeId: "ns=2;i=' \
             + str(i + 1) \
             + '", value: ' \
-            + str(i) + ') { writeTime }'
+            + str(i) \
+            + ', dataType: "Int64") { writeTime }'
         query = query + node
     query = query + "}"
     return query
 
+
+def read_node_id(session, query):
+    start = time.time_ns()
+    response = session.post(GraphQL_API_URL, json={"query": query})
+    latency = round((time.time_ns() - start) / 1000000)
+    return latency
+
+
 def read_node_variable(session, query):
-    # time.sleep(0.05)
+    # time.sleep(0.2)
     start = time.time_ns()
     response = session.post(GraphQL_API_URL, json={"query": query})
     latency = round((time.time_ns() - start) / 1000000)
@@ -71,6 +97,7 @@ def read_node_variable(session, query):
 
 
 def write_node_variable(session, query):
+    # time.sleep(0.2)
     start = time.time_ns()
     response = session.post(GraphQL_API_URL, json={"query": query})
     latency = round((time.time_ns() - start) / 1000000)
@@ -90,24 +117,34 @@ with requests.Session() as session:
         # Initialize connections between GraphQL API and OPC UA server
         read_node_variable(session, read_query_gen(1))
 
+        # Fast test
+        for test in tests:
+            query = fast_query_gen(test)
+            tot = 0
+            for i in range(queriesPerTest):
+                latency = read_node_id(session, query)
+                tot += latency
+            avgLat = tot/queriesPerTest
+            size = round(len(query.encode('utf-16-le'))/1000)
+            print("Fast " + str(test) + ":")
+            print("  Size: " + str(size) + " kb")
+            print("    Latency: " + str(avgLat) + " ms")
+
         # Read tests
         for test in tests:
             query = read_query_gen(test)
             tot = {"lat": 0, "opc": 0}
             for i in range(queriesPerTest):
                 latency, readTime = read_node_variable(session, query)
-                print(
-                    "Read " + str(test) + " latency: " + str(latency) +
-                    " Read Time: " + str(readTime)
-                )
                 tot["lat"] += latency
                 tot["opc"] += readTime
             avgLat = tot["lat"]/queriesPerTest
             avgOpc = tot["opc"]/queriesPerTest
-            print(
-                "Read " + str(test) + " average latency: " + str(avgLat) +
-                "\nAverage read time: " + str(avgOpc)
-            )
+            size = round(len(query.encode('utf-16-le'))/1000)
+            print("Read " + str(test) + ":")
+            print("  Size: " + str(size) + " kb")
+            print("    Latency: " + str(avgLat) + " ms")
+            print("      Read time: " + str(avgOpc) + " ms")
 
         # Write tests
         for test in tests:
@@ -115,18 +152,15 @@ with requests.Session() as session:
             tot = {"lat": 0, "opc": 0}
             for i in range(queriesPerTest):
                 latency, writeTime = write_node_variable(session, query)
-                print(
-                    "Write " + str(test) + " latency: " + str(latency) +
-                    " Write Time: " + str(readTime)
-                )
                 tot["lat"] += latency
                 tot["opc"] += writeTime
             avgLat = tot["lat"]/queriesPerTest
             avgOpc = tot["opc"]/queriesPerTest
-            print(
-                "Write " + str(test) + " average latency: " + str(avgLat) +
-                "\nAverage write time: " + str(avgOpc)
-            )
+            size = round(len(query.encode('utf-16-le'))/1000)
+            print("Write " + str(test) + ":")
+            print("  Size: " + str(size) + " kb")
+            print("    Latency: " + str(avgLat) + " ms")
+            print("      Write one time: " + str(avgOpc) + " ms")
 
     finally:
         # Remove set up test server from GraphQL API
@@ -155,30 +189,31 @@ def write_node_variable_opcua(session, n):
         rv = ua.WriteValue()
         rv.NodeId = ua.NodeId.from_string("ns=2;i=" + str(i + 1))
         rv.AttributeId = ua.AttributeIds.Value
-        variantType = ua.VariantType[dataType]
-        rv.Value = ua.DataValue(ua.Variant(value, variantType))
+        variantType = ua.VariantType["Int64"]
+        rv.Value = ua.DataValue(ua.Variant(i, variantType))
         params.NodesToWrite.append(rv)
     start = time.time_ns()
-    session.uaclient.read(params)
+    session.uaclient.write(params)
     latency = round((time.time_ns() - start) / 1000000)
     return latency
 
 
-""" with Client(OPC_UA_Endpoint) as session:
+with Client(OPC_UA_Endpoint) as session:
 
     # OPC UA read tests
     tot = 0
     for test in tests:
-        latency = read_node_variable_opcua(session, test)
-        print("Read " + str(test) + " latency: " + str(latency))
-        tot += latency
-    print("Read " + str(test) + " average latency: " + str(tot))
+        for i in range(queriesPerTest):
+            latency = read_node_variable_opcua(session, test)
+            tot += latency
+        print("Read OPC UA " + str(test) + ":")
+        print("    ReadTime: " + str(tot/queriesPerTest))
 
     # OPC UA write tests
     tot = 0
     for test in tests:
-        latency = write_node_variable_opcua(session, test)
-        print("Write " + str(test) + " latency: " + str(latency))
-        tot += latency
-    print("Write " + str(test) + " average latency: " + str(tot))
- """
+        for i in range(queriesPerTest):
+            latency = write_node_variable_opcua(session, test)
+            tot += latency
+        print("Write OPC UA " + str(test) + ":")
+        print("    WriteTime: " + str(tot/queriesPerTest))
