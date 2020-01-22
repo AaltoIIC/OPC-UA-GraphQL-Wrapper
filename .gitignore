@@ -5,5 +5,4 @@ venv
 winenv
 Tests/winenv
 linenv
-opcqlwrapper.tar
 *.csv

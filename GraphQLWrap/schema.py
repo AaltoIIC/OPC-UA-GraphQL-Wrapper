@@ -11,10 +11,8 @@ import datetime
 import asyncio
 import json
 
-useDataloader = True
-if useDataloader:
-    from dataloader import AttributeLoader
-    attribute_loader = AttributeLoader(cache=False)
+from dataloader import AttributeLoader
+attribute_loader = AttributeLoader(cache=False)
 
 subscribeVariables = False
 
@@ -111,33 +109,21 @@ class OPCUANode(graphene.ObjectType):
     @staticmethod
     async def resolve_name(self, info):
         self.set_node()
-        if useDataloader:
-            attributeKey = self.node_key + "/DisplayName"
-            x = await attribute_loader.load(attributeKey)
-            return x[0].Value.Value.Text
-        else:
-            return self.node.get_attribute(
-                ua.AttributeIds.DisplayName).Value.Value.Text
+        attributeKey = self.node_key + "/DisplayName"
+        x = await attribute_loader.load(attributeKey)
+        return x[0].Value.Value.Text
 
     async def resolve_description(self, info):
         self.set_node()
-        if useDataloader:
-            attributeKey = self.node_key + "/Description"
-            x = await attribute_loader.load(attributeKey)
-            return x[0].Value.Value.Text
-        else:
-            return self.node.get_attribute(
-                ua.AttributeIds.Description).Value.Value.Text
+        attributeKey = self.node_key + "/Description"
+        x = await attribute_loader.load(attributeKey)
+        return x[0].Value.Value.Text
 
     async def resolve_node_class(self, info):
         self.set_node()
-        if useDataloader:
-            attributeKey = self.node_key + "/NodeClass"
-            x = await attribute_loader.load(attributeKey)
-            return x[0].Value.Value.name
-        else:
-            return self.node.get_attribute(
-                ua.AttributeIds.NodeClass).Value.Value.name
+        attributeKey = self.node_key + "/NodeClass"
+        x = await attribute_loader.load(attributeKey)
+        return x[0].Value.Value.name
 
     async def resolve_variable(self, info):
         self.set_node()
@@ -153,8 +139,7 @@ class OPCUANode(graphene.ObjectType):
                 )
             else:
                 self.server_object.subscribe_variable(self.node_id)
-
-        if useDataloader:
+        else:
             attributeKey = self.node_key + "/Value"
             x = await attribute_loader.load(attributeKey)
             return OPCUAVariable(
@@ -163,19 +148,6 @@ class OPCUANode(graphene.ObjectType):
                 source_timestamp=x[0].SourceTimestamp,
                 status_code=x[0].StatusCode.name,
                 read_time=x[1]
-            )
-
-        else:
-            variable, readTime = await self.server_object.read_node_attribute(
-                self.node_id,
-                "Value"
-            )
-            return OPCUAVariable(
-                value=variable.Value.Value,
-                data_type=variable.Value.VariantType.name,
-                source_timestamp=variable.SourceTimestamp,
-                status_code=variable.StatusCode.name,
-                read_time=readTime
             )
 
     def resolve_path(self, info):

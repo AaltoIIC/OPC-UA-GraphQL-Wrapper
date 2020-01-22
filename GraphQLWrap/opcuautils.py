@@ -266,7 +266,9 @@ class OPCUAServer(object):
         else:
             return result[0]
 
-    async def set_node_attribute(self, nodeId, attribute, value, dataType=None):
+    async def set_node_attribute(
+        self, nodeId, attribute, value, dataType=None
+    ):
         """
         Sets node attribute based on given arguments.
         Giving correct dataType for value and node speeds
