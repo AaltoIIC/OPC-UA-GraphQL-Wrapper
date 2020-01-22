@@ -7,8 +7,7 @@ from schema import schema
 
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
-from opcuautils import serverList
-
+from opcuautils import getServers
 
 templates = Jinja2Templates(directory="templates")
 
@@ -36,7 +35,7 @@ app.mount(
 @app.route("/")
 async def index(request):
     servers = []
-    for server in serverList:
+    for server in getServers():
         servers.append({"name": server.name})
     return templates.TemplateResponse(
         'index.html', {

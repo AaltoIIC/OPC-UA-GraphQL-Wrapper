@@ -5,6 +5,13 @@ from opcua import ua
 from opcuautils import getServer
 from collections import defaultdict
 
+"""
+Usage:
+results = await AttributeLoader.load(attributeKey)
+attributeObject = results[0]
+readTime = results[1]
+"""
+
 
 class AttributeLoader(DataLoader):
 
@@ -21,8 +28,10 @@ class AttributeLoader(DataLoader):
 
         Results
         sortedResults:  List of values returned by the OPC UA server
-                        for each attribute.
+                        for each attribute. Also includes OPC UA read
+                        time with each attribute.
                         In same order as attributeKeys.
+        Example:        [<opcua_object>, readTime]
         """
 
         servers = defaultdict(list)
@@ -45,11 +54,11 @@ class AttributeLoader(DataLoader):
                 rv.AttributeId = ua.AttributeIds[info[2]]
                 params.NodesToRead.append(rv)
 
-            results, latency = await server.read(params)
+            results, readTime = await server.read(params)
 
             i = 0
             for info in attributes:
-                sortedResults[info[0]] = [results[i], latency]
+                sortedResults[info[0]] = [results[i], readTime]
                 i += 1
 
         return sortedResults

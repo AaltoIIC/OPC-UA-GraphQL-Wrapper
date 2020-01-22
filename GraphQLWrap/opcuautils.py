@@ -1,6 +1,7 @@
 """
-Utilities used by schemas and dataloader.
-Functions for retrieving data from OPC UA server.
+OPC UA server management objects:
+    - Utilities used by schemas and dataloader.
+    - Functions for retrieving data from OPC UA server.
 """
 
 from opcua import Client, ua
@@ -81,7 +82,7 @@ class OPCUAServer(object):
         self.subscriptions = {}
         # ----------------------------
 
-    async def check_connection(self):
+    def check_connection(self):
         """
         Check if a connection has been established before
         or if connection thread is running.
@@ -141,8 +142,8 @@ class OPCUAServer(object):
         """
         Create node path from node id for current server settings.
         Attempts to create a path of node from rootNode.
-        Only works for folderly like string node ids
-        (folders separated by ".").
+        Only works for folderly like string node ids.
+        Example: "ns=2;s=node1.node2.node3.node4"
         """
 
         identifierType = rootNodeId.split(";")[-1].split("=")[0]
@@ -391,7 +392,7 @@ class OPCUAServer(object):
         Returns result object and time it took to read from OPC UA server.
         """
 
-        await self.check_connection()
+        self.check_connection()
         start = time.time_ns()
         result = self.client.uaclient.read(params)
         readTime = time.time_ns() - start
@@ -405,7 +406,7 @@ class OPCUAServer(object):
         Returns result object and time it took to read from OPC UA server.
         """
 
-        await self.check_connection()
+        self.check_connection()
         start = time.time_ns()
         result = self.client.uaclient.write(params)
         writeTime = time.time_ns() - start

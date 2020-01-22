@@ -64,7 +64,10 @@ class TestReadAttribute(unittest.TestCase):
         variable = node["variable"]
         assert variable.get("value") == 1.1
         assert variable.get("dataType") == "Double"
-        timestamp = datetime.datetime.strptime(variable.get("sourceTimestamp"), "%Y-%m-%dT%H:%M:%S.%f")
+        timestamp = datetime.datetime.strptime(
+            variable.get("sourceTimestamp"),
+            "%Y-%m-%dT%H:%M:%S.%f"s
+        )
         assert isinstance(timestamp, datetime.datetime)
         assert variable.get("statusCode") == "Good"
         assert node.get("nodeId") == "ns=2;i=2"
@@ -84,15 +87,16 @@ class TestReadAttribute(unittest.TestCase):
         assert server.get("ok") is True
 
         response = client.post("/graphql/", json={"query": query})
-        print(response.status_code)
-        print(response.json())
+        """ with self.assertRaises():
+            response = client.post("/graphql/", json={"query": query}) """
         assert response.status_code == 400
         response = response.json()
         server = response["data"]["addServer"]
         assert server is None
         errors = response.get("errors")
         assert errors is not None
-        assert errors[0].get("message") == "Server with that name is already configured"
+        assert errors[0].get("message") == "Server with that name \\
+            is already configured"
         assert errors[0].get("path")[0] == "addServer"
 
     def test_delete_server(self):
@@ -105,15 +109,15 @@ class TestReadAttribute(unittest.TestCase):
         server = response["data"]["deleteServer"]
         assert server.get("ok") is True
 
-        """ response = client.post("/graphql/", json={"query": query})
-        assert response.status_code == 200
+        response = client.post("/graphql/", json={"query": query})
+        assert response.status_code == 400
         response = response.json()
         server = response["data"]["deleteServer"]
         assert server is None
         errors = response.get("errors")
         assert errors is not None
         assert errors[0].get("message") == "Server not found in server list"
-        assert errors[0].get("path") == "deleteServer" """
+        assert errors[0].get("path")[0] == "deleteServer"
 
 
 if __name__ == "__main__":
