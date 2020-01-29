@@ -99,7 +99,6 @@ class OPCUANode(ObjectType):
 
     def resolve_sub_nodes(self, info):
         self.set_node()
-        print(self.server_object.name)
         subNodes = []
         for subNode in self.node.get_children():
             subNodes.append(OPCUANode(
@@ -108,9 +107,9 @@ class OPCUANode(ObjectType):
                 ))
         return subNodes
 
-    def resolve_variable_sub_nodes(self, info):
+    async def resolve_variable_sub_nodes(self, info):
         self.set_node()
-        variableNodes = self.server_object.get_variable_nodes(self.node)
+        variableNodes = await self.server_object.get_variable_nodes(self.node)
         nodes = []
         for variable in variableNodes:
             node_id = variable.nodeid.to_string()
@@ -164,7 +163,6 @@ class Query(ObjectType):
         node_id=String(required=True, description=d.node_id),
         description=OPCUANode.__doc__
     )
-
     servers = List(
         OPCUAServer,
         description=OPCUAServer.__doc__

@@ -1,5 +1,6 @@
 from graphene.types import Scalar
-from graphql.language import ast
+from graphql.language.ast import StringValue, IntValue, FloatValue, \
+    BooleanValue, EnumValue
 
 import datetime
 
@@ -10,7 +11,7 @@ class OPCUADataVariable(Scalar):
 
     Formats datetime objects into JSONifiable format.
     Supports multiple different value types
-    (int, float, datetime, string(without '.'), boolean).
+    (int, float, datetime, string, boolean).
     """
 
     class Meta():
@@ -27,28 +28,30 @@ class OPCUADataVariable(Scalar):
     @staticmethod
     def parse_literal(node):
         value = node.value
-        if isinstance(node, ast.StringValue):
-            value = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f")
-        elif "." in value:
-            value = float(value)
-        elif value.isdigit():
-            value = int(value)
-        elif value in ("True", "true"):
-            value = True
-        elif value in ("False", "false"):
-            value = False
-        return value
+        if isinstance(node, IntValue):
+            num = int(value)
+            if -2147483648 <= num <= 2147483647:
+                return num
+        elif isinstance(node, FloatValue):
+            return float(value)
+        elif isinstance(node, BooleanValue):
+            return value
+        elif isinstance(node, StringValue):
+            try:
+                dt = datetime.datetime.strptime(
+                    value,
+                    "%Y-%m-%dT%H:%M:%S.%f"
+                )
+                return dt
+            except ValueError:
+                return str(value)
+        elif isinstance(node, EnumValue):
+            if (value == "True") or (value == "true"):
+                return True
+            elif (value == "False") or (value == "false"):
+                return False
+            return str(value)
 
     @staticmethod
     def parse_value(value):
-        if isinstance(value, (datetime.date, datetime.datetime)):
-            value = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f")
-        elif "." in value:
-            value = float(value)
-        elif value.isdigit():
-            value = int(value)
-        elif value in ("True", "true"):
-            value = True
-        elif value in ("False", "false"):
-            value = False
         return value

@@ -182,7 +182,7 @@ class OPCUAServer(object):
 
         return self.client.get_node(nodeId)
 
-    def get_variable_nodes(
+    async def get_variable_nodes(
         self, node,
         nodeClass=2, variableList=None, depth=0, maxDepth=10
     ):
@@ -206,12 +206,12 @@ class OPCUAServer(object):
             rv.NodeId = node.nodeid
             rv.AttributeId = ua.AttributeIds.NodeClass
             params.NodesToRead.append(rv)
-        results = self.read(params)
+        results, readTime = await self.read(params)
 
         for i in range(len(results)):
             if nodeClass == results[i].Value.Value:
                 variableList.append(nodes[i])
-            self.get_variable_nodes(
+            await self.get_variable_nodes(
                 node=nodes[i],
                 nodeClass=nodeClass,
                 variableList=variableList,
@@ -365,24 +365,9 @@ class OPCUAServer(object):
 
         self.check_connection()
         node = self.get_node(nodeId)
-        self.client.delete_nodes([node], recursive)
-        try:
-            params = ua.ReadParameters()
-            rv = ua.ReadValueId()
-            rv.NodeId = ua.NodeId.from_string(node_id)
-            rv.AttributeId = ua.AttributeIds.DisplayName
-            params.NodesToRead.append(rv)
-            server.read(params)
-            ok = False
-        except Exception as e:
-            print(e)
-            ok = True
-
-        if ok is False:
-            # TODO Always gives this message..
-            raise Warning("Could not delete node. Perhaps no access rights?")
-
-        return ok
+        result = self.client.delete_nodes([node], recursive)
+        result[1][0].check()
+        return result[1][0].is_good()
 
     async def read(self, params):
         """

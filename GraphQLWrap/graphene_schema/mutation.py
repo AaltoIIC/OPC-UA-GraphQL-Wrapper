@@ -27,6 +27,7 @@ class SetNodeValue(Mutation):
         dataType = String(description=d.data_type)
 
     async def mutate(self, info, server, node_id, value, dataType=None):
+
         server = getServer(server)
         ok, writeTime = await server.set_node_attribute(
             node_id, "Value", value, dataType
@@ -42,7 +43,6 @@ class SetNodeDescription(Mutation):
     Description must be a string.
     """
 
-    description = String(description=d.description)
     ok = Boolean(description=d.ok)
 
     class Arguments:
@@ -109,7 +109,7 @@ class AddNode(Mutation):
             name=result["name"],
             node_id=result["nodeId"],
             variable=variable,
-            server=server,
+            server=server.name,
             writable=writable,
             ok=True
         )
