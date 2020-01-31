@@ -3,6 +3,5 @@ __pycache__/
 .vscode
 venv
 winenv
-Tests/winenv
 linenv
 *.csv
