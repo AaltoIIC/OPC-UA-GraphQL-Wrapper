@@ -17,8 +17,8 @@ Communication with the OPC UA in the backend is done with the help of [python-op
 - [Example Queries](#example-queries)
 - [Installation](#installation)
     - [Setup](#setup)
+    - [Running with Docker](#running-with-docker)
     - [Running the API locally](#running-the-api-locally)
-    - [Deployment to Raspberry Pi](#deployment-to-raspberry-pi)
 
 <a name="introduction"></a>
 ## Introduction
@@ -139,13 +139,13 @@ query {
 ### Mutation
 ```javascript
 mutation {
-    setValue(server: "TestServer", nodeId: "ns=2;i=1234", value: 5) {
+    setValue(server: "TestServer", nodeId: "ns=2;i=1234", value: 5, dataType: "Int32") {
         ok
     }
 }
 ```
 
-### Example request with python requests
+### Example read request with python requests
 ```python
 import requests
 
@@ -168,33 +168,58 @@ Clone the repository
 ```
 git clone https://github.com/AaltoIIC/OPC-UA-GraphQL-Wrapper.git
 ```
-Browse to cloned project's folder. (Suggested to use virtualenv for following).
+
+<a name="running-with-docker"></a>
+### Running with Docker
+Docker installation guide for Raspbian on Raspberry Pi can be found [here](https://dev.to/rohansawant/installing-docker-and-docker-compose-on-the-raspberry-pi-in-5-simple-steps-3mgl).
+
+For Windows, the docker install file can be downloaded from [Here](https://docs.docker.com/docker-for-windows/release-notes/). Older versions seem to be possible to download without login.
+
+Navigate to the project folder where the Dockerfile is located with Windows CMD or Raspbian Bash.
+
+Build the docker image with:
 ```
-pip install -r requirements.txt
+docker build -t opcqlwrapper .
 ```
 
-<a name="setup"></a>
-### Setup
-You may input your OPC UA server name and end point addresses to [GraphQLWrap/servers.json](https://github.com/AaltoIIC/OPC-UA-GraphQL-Wrapper/blob/master/GraphQLWrap/servers.json)
+Run a docker container of the image with:
+```
+docker run -p 80:8000 --name opcqlwrapper opcqlwrapper
+```
+To run the GraphQL wrapper always on boot run the following command instead:
+```
+docker run -p 80:8000 --restart always --name opcqlwrapper opcqlwrapper
+```
 
-Alternatively, you can use the GraphQL API (once its running) to set up an OPC UA server.
-
-Example query:
-```javascript
-mutation {
-    addServer(
-        name: "TestServer"
-        endPointAddress: "opc.tcp://localhost:4840/freeopcua/server/"
-    ) {ok}
-}
+The server can be now accessed either locally at address:
+```
+http://localhost/
+```
+or remotely from the host devices ip address such as:
+```
+http://192.168.0.XX/
+```
+GraphQL queries are POST to corresponding URLs:
+```
+http://localhost/graphql        # Local
+or
+http://192.168.0.XX/graphql     # Remote
 ```
 
 <a name="running-the-api-locally"></a>
 ### Running the API locally as development server
+Navigate to the project folder with Windows CMD or Raspbian Bash
+
+Install dependencies from with command:
+
+(suggested to use virtual environment)
+```
+pip install -r requirements.txt
+```
 
 From the cloned project's [GraphQLWrap](https://github.com/AaltoIIC/OPC-UA-GraphQL-Wrapper/tree/master/GraphQLWrap) folder run the command:
 
-(Within virtualenv, if used)
+(Within virtual environment, if used)
 ```
 uvicorn main:app --reload --port 8000
 ```
@@ -208,45 +233,19 @@ http://localhost:8000/graphql
 ```
 Above URL has also a Graph*i*QL developer interface available if opening the URL with a browser. You can build and test GraphQL queries there.
 
-<a name="deployment-to-raspberry-pi"></a>
-### Deployment to Raspberry Pi
+<a name="setup"></a>
+### Setup
 
-#### Deploying the GraphQL Wrapper to a Raspberry Pi server
-Coming soonish with potentially a docker instructions as well
+You can setup OPC UA server endpoints with GraphQL queries to the GraphQL API (once its running).
 
-#### Redeploying the Django app changes to (existing) Raspberry Pi server
-
-(DOES NOT WORK ATM DUE TO RECENT CHANGES)
-
-Use Ubuntu bash to run [redeployToRaspPi.sh](https://github.com/AaltoIIC/OPC-UA-GraphQL-Wrapper/blob/master/redeployToRaspPi.sh) script (Don't move the script from its location).
-You may need to adjust the script if starting your own Raspberry Pi server.
-
-Ensure that you're connected to the same network as the Raspberry Pi.
-```
-$ ./redeployToRaspPi.sh
+Example query:
+```javascript
+mutation {
+    addServer(
+        name: "TestServer"
+        endPointAddress: "opc.tcp://localhost:4840/freeopcua/server/"
+    ) { ok }
+}
 ```
 
-### Docker
-This guide assumes that you already have docker installed.
-Guide on Docker installation can be found for [Raspberry Pi](https://dev.to/rohansawant/installing-docker-and-docker-compose-on-the-raspberry-pi-in-5-simple-steps-3mgl).
-For Windows, the docker install file can be downloaded from [Here](https://docs.docker.com/docker-for-windows/release-notes/). Older versions seem to be possible to download without login.
 
-Navigate to the project folder where the Dockerfile can be found with Windows CMD or Bash on Raspbian.
-
-Build the docker image with:
-```
-docker build -t opcqlwrapper .
-```
-
-Run a docker container of the image with:
-```
-docker run -p 80:8000 --name opcqlwrapper opcqlwrapper
-```
-The server can be now accessed either locally at address:
-```
-http://localhost/
-```
-or remotely from the host devices ip address such as:
-```
-http://192.168.0.XX/
-```
