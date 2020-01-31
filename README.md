@@ -8,6 +8,8 @@ Information on GraphQL can be found [here](https://graphql.org/)
 
 Communication with the OPC UA in the backend is done with the help of [python-opcua](https://github.com/FreeOpcUa/python-opcua) library
 
+Built with Python 3.8. Python 3.7 and 3.6 might work as well.
+
 ## Contents
 
 - [Introduction](#introduction)
