@@ -206,7 +206,10 @@ class OPCUAServer(object):
             rv.NodeId = node.nodeid
             rv.AttributeId = ua.AttributeIds.NodeClass
             params.NodesToRead.append(rv)
-        results, readTime = await self.read(params)
+
+        results = []
+        if len(params.NodesToRead) > 0:
+            results, readTime = await self.read(params)
 
         for i in range(len(results)):
             if nodeClass == results[i].Value.Value:
