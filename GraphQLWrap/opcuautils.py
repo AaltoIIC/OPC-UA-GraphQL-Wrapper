@@ -146,8 +146,8 @@ class OPCUAServer(object):
         Example: "ns=2;s=node1.node2.node3.node4"
         """
 
-        identifierType = rootNodeId.split(";")[-1].split("=")[0]
-        if (identifierType == "s") and ("." in rootNodeId):
+        identifierType = self.rootNodeId.split(";")[-1].split("=")[0]
+        if (identifierType == "s") and ("." in self.rootNodeId):
             rootNodeName = self.rootNodeId.lower().split(".")[-1]
             nodePath = nodeId.lower().split(rootNodeName)[-1]
             nodePath = nodePath.replace(".", "", 1).replace(".", "/")
