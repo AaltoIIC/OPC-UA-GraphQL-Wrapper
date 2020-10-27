@@ -3,7 +3,7 @@ aiofiles==0.4.0
 aniso8601==7.0.0
 cffi==1.13.2
 Click==7.0
-cryptography==2.8
+cryptography==3.2
 graphene==2.1.8
 graphql-core==2.2.1
 graphql-relay==2.0.1
