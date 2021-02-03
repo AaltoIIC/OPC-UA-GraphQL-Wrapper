@@ -251,7 +251,7 @@ mutation {
 ```
 ### More resources
 This wrapper was developed as part of Master's thesis:
-Hietala, J. 2020. Real-time two-way data transfer with a Digital Twin via web interface. Master's thesis, Aalto University, Espoo, Finland. Available from: http://urn.fi/URN:NBN:fi:aalto-20200322255
+Hietala, J. 2020. Real-time two-way data transfer with a Digital Twin via web interface. Master's thesis, Aalto University, Espoo, Finland. Available from: http://urn.fi/URN:NBN:fi:aalto-202003222557
 
 In addition, a conference paper about the wrapper has been published:
 Hietala, J., Ala-Laurinaho, R., Autiosalo J. and Laaki, H., GraphQL Interface for OPC UA, 2020 IEEE Conference on Industrial Cyberphysical Systems (ICPS), Tampere, Finland, 2020, pp. 149-155, https://doi.org/10.1109/ICPS48405.2020.9274754 .
