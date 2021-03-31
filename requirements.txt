@@ -10,7 +10,7 @@ graphql-relay==2.0.1
 gunicorn==20.0.4
 h11==0.8.1
 Jinja2==2.10.3
-lxml==4.4.2
+lxml==4.6.3
 MarkupSafe==1.1.1
 opcua==0.98.8
 promise==2.2.1
