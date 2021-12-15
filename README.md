@@ -181,7 +181,7 @@ Navigate to the project folder where the Dockerfile is located with Windows CMD 
 
 Build the docker image with:
 ```
-docker build -t opcqlwrapper .
+docker build --network=host -t opcqlwrapper .
 ```
 
 Run a docker container of the image with:
