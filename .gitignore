@@ -2,6 +2,9 @@
 __pycache__/
 .vscode
 venv
+.venv
+env
+.env
 winenv
 linenv
 *.csv
