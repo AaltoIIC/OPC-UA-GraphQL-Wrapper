@@ -17,6 +17,7 @@ promise==2.2.1
 pycparser==2.19
 python-dateutil==2.8.1
 pytz==2019.3
+requests==2.22.0
 Rx==1.6.1
 six==1.13.0
 starlette==0.13.0
