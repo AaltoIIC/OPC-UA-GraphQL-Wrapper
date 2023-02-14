@@ -20,6 +20,6 @@ pytz==2019.3
 requests==2.22.0
 Rx==1.6.1
 six==1.13.0
-starlette==0.13.0
+starlette==0.25.0
 uvicorn==0.18.3
 websockets==10.3
