@@ -7,5 +7,5 @@ ADD requirements.txt /app
 
 RUN pip install -r requirements.txt
 
-CMD ["gunicorn", "-w 1", "-k uvicorn.workers.UvicornH11Worker", "-b :8000", "main:app"]
+CMD ["uvicorn", "main:app", "--workers", "4", "--host", "0.0.0.0", "--port", "8000"]
 
