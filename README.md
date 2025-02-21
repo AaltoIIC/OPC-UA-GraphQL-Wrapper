@@ -257,5 +257,8 @@ In addition, a conference paper about the wrapper has been published:
 Hietala, J., Ala-Laurinaho, R., Autiosalo J. and Laaki, H., GraphQL Interface for OPC UA, 2020 IEEE Conference on Industrial Cyberphysical Systems (ICPS), Tampere, Finland, 2020, pp. 149-155, https://doi.org/10.1109/ICPS48405.2020.9274754 .
 Open access manuscript available at https://research.aalto.fi/en/publications/graphql-interface-for-opc-ua
 
+The performance of the wrapper compared to REST-based solution was presented in:
+Ala-Laurinaho, R., Mattila, J., Autiosalo, J., Hietala, J., Laaki, H. and Tammi, K., 2022. Comparison of REST and GraphQL Interfaces for OPC UA. Computers, 11(5), p.65, https://doi.org/10.3390/computers11050065
+
 
 
